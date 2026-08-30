@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { PlanetCanvas } from "@/components/three/planet-canvas";
+import { useGalaxy } from "@/components/galaxy-provider";
 import { PLANET_META, type PlanetId } from "@/lib/galaxy-types";
+import { planetColony } from "@/lib/civilization";
 import { cn } from "@/lib/utils";
 
 export function PlanetHabitat({
@@ -22,6 +24,8 @@ export function PlanetHabitat({
   onTab: (id: string) => void;
 }) {
   const meta = PLANET_META[id];
+  const { store } = useGalaxy();
+  const colony = planetColony(store, id);
 
   return (
     <div
@@ -37,9 +41,9 @@ export function PlanetHabitat({
                 : "radial-gradient(ellipse at 70% 0%, rgba(169,139,255,0.22), transparent 50%), linear-gradient(200deg,#0c0818 0%,#05070F 48%)",
       }}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[42vh] opacity-90">
-        <PlanetCanvas planet={id} className="h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070F]" />
+      <div className="pointer-events-auto absolute inset-x-0 top-0 h-[46vh] opacity-95">
+        <PlanetCanvas planet={id} view="surface" store={store} className="h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070F]" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 pb-16 pt-6">
@@ -54,18 +58,22 @@ export function PlanetHabitat({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 280, damping: 26 }}
-          className="mt-8 max-w-xl"
+          className="mt-8 max-w-2xl"
         >
           <p
             className="text-[11px] font-semibold uppercase tracking-[0.32em]"
             style={{ color: meta.accent }}
           >
-            {meta.domain}
+            {meta.domain} · {meta.cadence}
           </p>
           <h1 className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">
             {title}
           </h1>
           <p className="mt-2 text-sm text-white/50">{meta.vibe}</p>
+          <p className="mt-2 text-xs text-white/40">
+            Pop {colony.population} · {colony.buildings.length} buildings · {colony.inputs} inputs ·{" "}
+            {colony.files} files · {colony.systems} systems
+          </p>
         </motion.div>
 
         <div className="mt-6 flex flex-wrap gap-2">
@@ -80,11 +88,7 @@ export function PlanetHabitat({
                   ? "border-transparent text-slate-950"
                   : "border-white/15 bg-white/5 text-white/70 hover:border-white/30"
               )}
-              style={
-                activeTab === tab.id
-                  ? { backgroundColor: meta.accent }
-                  : undefined
-              }
+              style={activeTab === tab.id ? { backgroundColor: meta.accent } : undefined}
             >
               {tab.label}
             </button>

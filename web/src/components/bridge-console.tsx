@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { SignOutButton } from "@/components/auth-buttons";
 import { PlanetCanvas } from "@/components/three/planet-canvas";
@@ -11,13 +12,20 @@ import { IngestPanel } from "@/components/ingest-panel";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { PLANET_META, type PlanetId } from "@/lib/galaxy-types";
 import { civilizationScore } from "@/lib/chart-series";
+import { galaxyPopulation, planetColony } from "@/lib/civilization";
 import { round } from "@/lib/utils";
 
 export function BridgeConsole({ userName }: { userName?: string | null }) {
+  const router = useRouter();
   const { store, loading, error, totals, inFlight, planetName, saving } = useGalaxy();
   const net = round(totals.galley.calories - totals.atlas.burn);
   const enabled = store.planets.filter((p) => p.enabled);
   const civ = civilizationScore(store);
+  const pop = galaxyPopulation(store);
+  const names = Object.fromEntries(store.planets.map((p) => [p.id, p.name])) as Record<
+    PlanetId,
+    string
+  >;
 
   if (loading) {
     return (
@@ -31,7 +39,15 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
     <div className="relative min-h-screen overflow-hidden bg-[#03050B]">
       {/* Cockpit canopy */}
       <div className="relative h-[58vh] min-h-[360px] overflow-hidden">
-        <PlanetCanvas planet="bridge" className="absolute inset-0 h-full w-full" />
+        <PlanetCanvas
+          planet="bridge"
+          view="system"
+          store={store}
+          names={names}
+          interactive
+          onSelectPlanet={(id) => router.push(PLANET_META[id].route)}
+          className="absolute inset-0 h-full w-full"
+        />
 
         {/* Glass reflection crawl */}
         <motion.div
@@ -61,9 +77,13 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
           <p className="mt-1 text-sm text-white/50">
             {userName ? `Pilot ${userName}` : "Google session active"}
             {saving ? " · writing Drive…" : ""}
+            {` · ${pop} across the system`}
             {inFlight.length
               ? ` · ${inFlight.length} ship${inFlight.length === 1 ? "" : "s"} in transit`
-              : " · all systems nominal"}
+              : ""}
+          </p>
+          <p className="mt-2 text-[11px] text-white/35">
+            Scroll to zoom. Hover a world for stats. Click to land. The Core is you — not a sun.
           </p>
         </div>
 
