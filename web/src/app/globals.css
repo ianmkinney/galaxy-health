@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05070f;
+  --foreground: #f4f8ff;
+  --plasma: #4ce0ff;
+  --galley: #ff8a3d;
+  --atlas: #ff4d6d;
+  --lumen: #4ce0ff;
+  --observatory: #a98bff;
+  --font-display: "Segoe UI", "Avenir Next", "Helvetica Neue", sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
