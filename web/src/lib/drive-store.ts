@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { google } from "googleapis";
-import { emptyStore, type GalaxyStore } from "./galaxy-types";
+import { emptyStore, normalizeStore, type GalaxyStore } from "./galaxy-types";
 
 const STORE_FILENAME = "galaxyhealth-store.json";
 
@@ -37,11 +37,11 @@ export async function loadGalaxyStore(accessToken: string): Promise<GalaxyStore>
   );
 
   const raw = typeof response.data === "string" ? response.data : String(response.data);
-  const parsed = JSON.parse(raw) as GalaxyStore;
-  if (!parsed?.version || !Array.isArray(parsed.planets)) {
+  try {
+    return normalizeStore(JSON.parse(raw));
+  } catch {
     return emptyStore();
   }
-  return parsed;
 }
 
 export async function saveGalaxyStore(
@@ -49,10 +49,10 @@ export async function saveGalaxyStore(
   store: GalaxyStore
 ): Promise<GalaxyStore> {
   const drive = driveClient(accessToken);
-  const payload = {
+  const payload = normalizeStore({
     ...store,
     updated_at: Date.now(),
-  };
+  });
   const body = Readable.from([JSON.stringify(payload, null, 2)]);
   const existingId = await findStoreFileId(accessToken);
 

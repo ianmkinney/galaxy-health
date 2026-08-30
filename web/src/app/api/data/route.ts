@@ -33,7 +33,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = (await request.json()) as GalaxyStore;
-    if (!body || body.version !== 1) {
+    if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid store payload" }, { status: 400 });
     }
     const saved = await saveGalaxyStore(gate.token, body);

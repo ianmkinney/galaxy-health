@@ -1,16 +1,14 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { GalaxyProvider } from "@/components/galaxy-provider";
-import { GalleyPage } from "@/components/planet-pages";
+import { GalleyWorld } from "@/components/planets/galley-world";
 
 export default async function Page() {
   const session = await auth();
   if (!session?.user) redirect("/");
   return (
-    <main className="min-h-screen bg-[#05070F]">
-      <GalaxyProvider>
-        <GalleyPage />
-      </GalaxyProvider>
-    </main>
+    <GalaxyProvider>
+      <GalleyWorld />
+    </GalaxyProvider>
   );
 }

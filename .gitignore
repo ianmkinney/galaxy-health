@@ -1,1 +1,28 @@
-node_modules
+# Root
+node_modules/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Expo / mobile
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/ios/
+mobile/android/
+mobile/.env
+mobile/.env.*
+!mobile/.env.example
+
+# Next.js / web
+web/node_modules/
+web/.next/
+web/out/
+web/.env
+web/.env.local
+web/.env.*
+!web/.env.example
+web/*.pem

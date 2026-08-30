@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   emptyStore,
+  normalizeStore,
   totalsForDay,
   type GalaxyStore,
   type PlanetId,
@@ -47,7 +48,7 @@ export function GalaxyProvider({ children }: { children: ReactNode }) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || "Failed to load data");
       }
-      const data = (await response.json()) as GalaxyStore;
+      const data = normalizeStore(await response.json());
       setStore(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load data");
@@ -73,7 +74,7 @@ export function GalaxyProvider({ children }: { children: ReactNode }) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || "Failed to save");
       }
-      const saved = (await response.json()) as GalaxyStore;
+      const saved = normalizeStore(await response.json());
       setStore(saved);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");

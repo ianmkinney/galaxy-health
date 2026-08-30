@@ -18,6 +18,48 @@ export type Meal = {
   created_at: number;
 };
 
+export type Recipe = {
+  id: string;
+  title: string;
+  ingredients: string;
+  instructions: string;
+  tags: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  prep_minutes?: number;
+  created_at: number;
+};
+
+export type PantryItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  location: string;
+  expires_on?: string;
+  created_at: number;
+};
+
+export type GroceryItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  checked: boolean;
+  created_at: number;
+};
+
+export type MealPlanSlot = {
+  id: string;
+  day: string; // YYYY-MM-DD
+  slot: "breakfast" | "lunch" | "dinner" | "snack";
+  title: string;
+  recipe_id?: string;
+  created_at: number;
+};
+
 export type Workout = {
   id: string;
   name: string;
@@ -25,6 +67,7 @@ export type Workout = {
   minutes: number;
   intensity: number;
   burn: number;
+  notes?: string;
   logged_on: string;
   created_at: number;
 };
@@ -47,6 +90,7 @@ export type Marker = {
   ref_low: number | null;
   ref_high: number | null;
   panel: string;
+  notes?: string;
   collected_on: string;
   created_at: number;
 };
@@ -63,14 +107,26 @@ export type Signal = {
   created_at: number;
 };
 
+export type AiSettings = {
+  provider: "anthropic" | "openai" | "xai" | "gemini";
+  /** User BYOK — stored only in their private Drive appData */
+  keys: Partial<Record<AiSettings["provider"], string>>;
+  model: string;
+};
+
 export type GalaxyStore = {
-  version: 1;
+  version: 2;
   planets: PlanetRecord[];
   meals: Meal[];
+  recipes: Recipe[];
+  pantry: PantryItem[];
+  grocery: GroceryItem[];
+  mealPlans: MealPlanSlot[];
   workouts: Workout[];
   checkins: CheckIn[];
   markers: Marker[];
   signals: Signal[];
+  ai: AiSettings;
   updated_at: number;
 };
 
@@ -83,28 +139,94 @@ export const DEFAULT_PLANETS: PlanetRecord[] = [
 
 export const PLANET_META: Record<
   PlanetId,
-  { domain: string; accent: string; route: string }
+  {
+    domain: string;
+    accent: string;
+    accentSoft: string;
+    route: string;
+    vibe: string;
+  }
 > = {
-  galley: { domain: "Food & fuel", accent: "#FF8A3D", route: "/galley" },
-  atlas: { domain: "Strength & movement", accent: "#FF4D6D", route: "/atlas" },
-  lumen: { domain: "Mind & recovery", accent: "#4CE0FF", route: "/lumen" },
+  galley: {
+    domain: "Food & fuel",
+    accent: "#FF8A3D",
+    accentSoft: "#FFB37A",
+    route: "/galley",
+    vibe: "Copper kitchen · warm steam · amber plasma",
+  },
+  atlas: {
+    domain: "Strength & movement",
+    accent: "#FF4D6D",
+    accentSoft: "#FF8FA3",
+    route: "/atlas",
+    vibe: "Forge load · crimson arcs · tectonic force",
+  },
+  lumen: {
+    domain: "Mind & recovery",
+    accent: "#4CE0FF",
+    accentSoft: "#9AF0FF",
+    route: "/lumen",
+    vibe: "Soft aurora · breath cycles · clear light",
+  },
   observatory: {
     domain: "Labs & biomarkers",
     accent: "#A98BFF",
+    accentSoft: "#D0C0FF",
     route: "/observatory",
+    vibe: "Ringed station · scan lines · violet glass",
   },
+};
+
+export const DEFAULT_AI: AiSettings = {
+  provider: "gemini",
+  keys: {},
+  model: "gemini-2.0-flash",
 };
 
 export function emptyStore(): GalaxyStore {
   return {
-    version: 1,
+    version: 2,
     planets: DEFAULT_PLANETS.map((p) => ({ ...p })),
     meals: [],
+    recipes: [],
+    pantry: [],
+    grocery: [],
+    mealPlans: [],
     workouts: [],
     checkins: [],
     markers: [],
     signals: [],
+    ai: { ...DEFAULT_AI, keys: {} },
     updated_at: Date.now(),
+  };
+}
+
+/** Migrate v1 Drive blobs (and partial objects) up to v2. */
+export function normalizeStore(raw: unknown): GalaxyStore {
+  const base = emptyStore();
+  if (!raw || typeof raw !== "object") return base;
+  const data = raw as Partial<GalaxyStore> & { version?: number };
+
+  return {
+    ...base,
+    ...data,
+    version: 2,
+    planets: data.planets?.length ? data.planets : base.planets,
+    meals: data.meals ?? [],
+    recipes: data.recipes ?? [],
+    pantry: data.pantry ?? [],
+    grocery: data.grocery ?? [],
+    mealPlans: data.mealPlans ?? [],
+    workouts: data.workouts ?? [],
+    checkins: data.checkins ?? [],
+    markers: data.markers ?? [],
+    signals: data.signals ?? [],
+    ai: {
+      provider: data.ai?.provider ?? DEFAULT_AI.provider,
+      model: data.ai?.model ?? DEFAULT_AI.model,
+      keys: { ...(data.ai?.keys ?? {}) },
+    },
+    updated_at: data.updated_at ?? Date.now(),
   };
 }
 
@@ -155,5 +277,12 @@ export function totalsForDay(store: GalaxyStore, day: string) {
     atlas,
     lumen,
     observatory: { markers: store.markers.length },
+    recipes: store.recipes.length,
+    pantry: store.pantry.length,
+    groceryOpen: store.grocery.filter((g) => !g.checked).length,
   };
+}
+
+export function uid() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
