@@ -35,15 +35,46 @@ export async function POST(request: Request) {
 
   const url = new URL(request.url);
   const origin = process.env.AUTH_URL || `${url.protocol}//${url.host}`;
+  const ingestUrl = `${origin}/api/ingest`;
+  const getExample = `${ingestUrl}?token=${encodeURIComponent(credential)}&text=${encodeURIComponent("Ate eggs (420 kcal) and ran 30 min, slept 7.5h")}`;
+  const agentPrompt = buildAgentPrompt({ origin, ingestUrl, token: credential });
 
   return NextResponse.json({
     token: credential,
     tokenId,
+    origin,
+    ingestUrl,
+    agentPrompt,
     examples: {
-      get: `${origin}/api/ingest?token=${encodeURIComponent(credential)}&text=${encodeURIComponent("Ate eggs (420 kcal) and ran 30 min, slept 7.5h")}`,
-      post: `curl -X POST ${origin}/api/ingest -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d '{"text":"Leg day 45 min + chicken bowl 600 kcal"}'`,
+      get: getExample,
+      post: `curl -X POST ${ingestUrl} -H "Authorization: Bearer ${credential}" -H "Content-Type: application/json" -d '{"text":"Leg day 45 min + chicken bowl 600 kcal"}'`,
     },
   });
+}
+
+function buildAgentPrompt(opts: { origin: string; ingestUrl: string; token: string }) {
+  return `You are my Galaxy Health logging agent.
+
+Whenever I mention food, workouts, sleep, mood, focus, labs/markers, recipes, pantry, or groceries, send that update to Galaxy Health. Do not ask me to open the app unless the request fails.
+
+How to log (preferred — POST):
+POST ${opts.ingestUrl}
+Authorization: Bearer ${opts.token}
+Content-Type: application/json
+
+Body:
+{"text":"<my free-form update in plain English>"}
+
+Simple GET alternative (good for one-liners):
+${opts.ingestUrl}?token=${encodeURIComponent(opts.token)}&text=<url-encoded update>
+
+Rules:
+- Put everything I said into the "text" field. Galaxy Health routes it into the right planets (Galley, Atlas, Lumen, Observatory).
+- After each call, briefly confirm what was applied (planets touched / summary from the JSON response).
+- If you get 401, tell me to revoke and regenerate the agent token in Galaxy Health → Settings.
+- Keep my token secret. Never paste it into public chats or commit it.
+
+App origin: ${opts.origin}`;
 }
 
 export async function DELETE() {

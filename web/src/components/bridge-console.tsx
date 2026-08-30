@@ -10,10 +10,11 @@ import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AiDock } from "@/components/ai-dock";
 import { IngestPanel } from "@/components/ingest-panel";
 import { useGalaxy } from "@/components/galaxy-provider";
-import { PLANET_META, type PlanetId } from "@/lib/galaxy-types";
+import { planetView, type PlanetId } from "@/lib/galaxy-types";
 import { civilizationScore } from "@/lib/chart-series";
 import { galaxyPopulation, planetColony } from "@/lib/civilization";
 import { round } from "@/lib/utils";
+import { ForgePlanetPanel } from "@/components/planets/forge-planet-panel";
 
 export function BridgeConsole({ userName }: { userName?: string | null }) {
   const router = useRouter();
@@ -40,12 +41,13 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
       {/* Cockpit canopy */}
       <div className="relative h-[58vh] min-h-[360px] overflow-hidden">
         <PlanetCanvas
+          key={store.updated_at}
           planet="bridge"
           view="system"
           store={store}
           names={names}
           interactive
-          onSelectPlanet={(id) => router.push(PLANET_META[id].route)}
+          onSelectPlanet={(id) => router.push(planetView(store, id).route)}
           className="absolute inset-0 h-full w-full"
         />
 
@@ -110,7 +112,7 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
                 <div className="text-3xl font-black text-cyan-200">{civ}</div>
               </div>
               <div className="text-right text-[11px] text-white/40">
-                Grows as habits land across planets
+                Population {pop} · grows as you log, file, and stand up systems
               </div>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
@@ -147,8 +149,9 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
         <GlassPanel title="Nav dock" accent="#A98BFF" index={1}>
           <div className="grid grid-cols-2 gap-3">
             {enabled.map((planet) => {
-              const meta = PLANET_META[planet.id as PlanetId];
+              const meta = planetView(store, planet.id);
               const inbound = inFlight.filter((s) => s.to === planet.id).length;
+              const colony = planetColony(store, planet.id as PlanetId);
               return (
                 <Link
                   key={planet.id}
@@ -165,7 +168,9 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
                   />
                   <div className="font-semibold text-white">{planetName(planet.id)}</div>
                   <div className="text-[11px] text-white/45">{meta.domain}</div>
-                  <div className="mt-1 text-[10px] text-white/30">{meta.vibe}</div>
+                  <div className="mt-1 text-[10px] text-white/30">
+                    Pop {colony.population} · {colony.buildings.length} buildings · {meta.cadence}
+                  </div>
                   {inbound > 0 ? (
                     <span
                       className="absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-bold text-slate-950"
@@ -188,6 +193,10 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
           </div>
         </GlassPanel>
 
+        <div className="lg:col-span-2">
+          <ForgePlanetPanel />
+        </div>
+
         {inFlight.length > 0 ? (
           <GlassPanel
             title="In transit"
@@ -200,7 +209,7 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
                 <li key={signal.id} className="flex items-center gap-2">
                   <span
                     className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: PLANET_META[signal.from].accent }}
+                    style={{ backgroundColor: planetView(store, signal.from).accent }}
                   />
                   {planetName(signal.from)} → {planetName(signal.to)} · {signal.kind}
                 </li>

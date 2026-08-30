@@ -6,7 +6,7 @@ import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { Area, Field } from "@/components/ui/fields";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { uid, type Recipe, type Signal } from "@/lib/galaxy-types";
-import { parseImportedRecipe, recipeMatchesPantry, searchRecipes } from "@/lib/galley-ops";
+import { recipeMatchesPantry, searchRecipes } from "@/lib/galley-ops";
 import { round, todayKey } from "@/lib/utils";
 
 export function GalleyRecipeBook() {
@@ -232,5 +232,3 @@ export function GalleyRecipeBook() {
     </div>
   );
 }
-
-export { parseImportedRecipe };

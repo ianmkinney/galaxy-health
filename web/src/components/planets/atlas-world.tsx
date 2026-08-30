@@ -11,11 +11,13 @@ import { Field, Metric } from "@/components/ui/fields";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { uid, type Signal, type TrainingProgram } from "@/lib/galaxy-types";
 import { planetColony } from "@/lib/civilization";
+import { SystemsLedger } from "@/components/planets/systems-ledger";
 import { atlasStats, relativeDay } from "@/lib/planet-ops";
 import { round, todayKey } from "@/lib/utils";
 
 const TABS = [
   { id: "colony", label: "Colony" },
+  { id: "systems", label: "Systems" },
   { id: "charts", label: "Charts" },
   { id: "sessions", label: "Sessions" },
   { id: "programs", label: "Programs" },
@@ -116,6 +118,7 @@ export function AtlasWorld() {
   return (
     <PlanetHabitat id="atlas" title={planetName("atlas")} tabs={TABS} activeTab={tab} onTab={setTab}>
       {tab === "colony" ? <ColonyPanel colony={colony} /> : null}
+      {tab === "systems" ? <SystemsLedger planetId="atlas" /> : null}
       {tab === "charts" ? <PlanetCharts store={store} planet="atlas" /> : null}
       {tab === "sessions" ? (
         <div className="grid gap-4 lg:grid-cols-2">

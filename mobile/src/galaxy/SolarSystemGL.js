@@ -105,19 +105,40 @@ const OrbitRing = ({ planet }) => {
   );
 };
 
-const Star = () => (
-  <group>
-    <mesh>
-      <sphereGeometry args={[STAR.radius / PX_PER_UNIT, 40, 30]} />
-      <meshBasicMaterial color={starColor.core} />
-    </mesh>
-    <mesh scale={1.35}>
-      <sphereGeometry args={[STAR.radius / PX_PER_UNIT, 30, 22]} />
-      <meshBasicMaterial color={starColor.mid} transparent opacity={0.18} side={1} />
-    </mesh>
-    <pointLight intensity={2.4} distance={12} decay={1.4} color={starColor.mid} />
-  </group>
-);
+const Star = () => {
+  const graph = useMemo(() => {
+    const n = 64;
+    const positions = new Float32Array(n * 3);
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const radius = STAR.radius / PX_PER_UNIT;
+    for (let i = 0; i < n; i += 1) {
+      const y = 1 - (i / (n - 1)) * 2;
+      const rY = Math.sqrt(Math.max(0, 1 - y * y));
+      const theta = golden * i;
+      const r = radius * (1 + 0.1 * Math.sin(3 * theta));
+      positions[i * 3] = Math.cos(theta) * rY * r;
+      positions[i * 3 + 1] = y * r;
+      positions[i * 3 + 2] = Math.sin(theta) * rY * r;
+    }
+    return positions;
+  }, []);
+
+  return (
+    <group>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[graph, 3]} />
+        </bufferGeometry>
+        <pointsMaterial color={starColor.core} size={0.035} transparent opacity={0.95} />
+      </points>
+      <mesh>
+        <sphereGeometry args={[STAR.radius / PX_PER_UNIT * 0.28, 16, 12]} />
+        <meshBasicMaterial color={starColor.mid} transparent opacity={0.22} />
+      </mesh>
+      <pointLight intensity={1.6} distance={12} decay={1.4} color={starColor.core} />
+    </group>
+  );
+};
 
 /* ----------------------------------------------------------------- signals */
 

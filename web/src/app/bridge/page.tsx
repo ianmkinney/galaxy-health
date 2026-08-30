@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { GalaxyProvider } from "@/components/galaxy-provider";
 import { BridgeConsole } from "@/components/bridge-console";
 
 export default async function BridgePage() {
@@ -9,9 +8,7 @@ export default async function BridgePage() {
 
   return (
     <main className="min-h-screen bg-[#05070F]">
-      <GalaxyProvider>
-        <BridgeConsole userName={session.user.name} />
-      </GalaxyProvider>
+      <BridgeConsole userName={session.user.name} />
     </main>
   );
 }

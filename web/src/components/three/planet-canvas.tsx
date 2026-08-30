@@ -5,7 +5,7 @@ import { OrbitControls, Stars } from "@react-three/drei";
 import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { GalaxyStore, PlanetId, Signal } from "@/lib/galaxy-types";
-import { PLANET_META, emptyStore } from "@/lib/galaxy-types";
+import { emptyStore, planetView } from "@/lib/galaxy-types";
 import { planetColony } from "@/lib/civilization";
 import { orbitWorldPosition } from "@/lib/neural-geometry";
 import { NeuralCore } from "./neural-core";
@@ -20,8 +20,10 @@ function SignalCraft({
   store: GalaxyStore;
 }) {
   const mesh = useRef<THREE.Mesh>(null);
-  const from = PLANET_META[signal.from].orbit;
-  const to = PLANET_META[signal.to].orbit;
+  const fromView = planetView(store, signal.from);
+  const toView = planetView(store, signal.to);
+  const from = fromView.orbit;
+  const to = toView.orbit;
   const enabledFrom = store.planets.find((p) => p.id === signal.from)?.enabled !== false;
   const enabledTo = store.planets.find((p) => p.id === signal.to)?.enabled !== false;
 
@@ -46,7 +48,7 @@ function SignalCraft({
   return (
     <mesh ref={mesh}>
       <octahedronGeometry args={[0.045, 0]} />
-      <meshBasicMaterial color={PLANET_META[signal.from].accent} />
+      <meshBasicMaterial color={fromView.accent} />
     </mesh>
   );
 }
@@ -69,19 +71,25 @@ function SystemScene({
     <>
       <color attach="background" args={["#03050B"]} />
       <fog attach="fog" args={["#03050B", 10, 22]} />
-      <ambientLight intensity={0.22} />
+      <ambientLight intensity={0.28} />
+      <hemisphereLight args={["#9ad4ff", "#12081a", 0.4]} />
+      <directionalLight position={[6, 8, 4]} intensity={1.15} color="#fff6ea" />
       <Stars radius={90} depth={50} count={1600} factor={3.2} saturation={0} fade speed={0.45} />
       <NeuralCore />
-      {enabled.map((planet) => (
-        <OrbitingWorld
-          key={planet.id}
-          id={planet.id}
-          name={names?.[planet.id] ?? planet.name}
-          colony={planetColony(store, planet.id)}
-          interactive={interactive}
-          onSelect={onSelect}
-        />
-      ))}
+      {enabled.map((planet) => {
+        const view = planetView(store, planet.id);
+        return (
+          <OrbitingWorld
+            key={planet.id}
+            id={planet.id}
+            view={view}
+            name={names?.[planet.id] ?? planet.name}
+            colony={planetColony(store, planet.id)}
+            interactive={interactive}
+            onSelect={onSelect}
+          />
+        );
+      })}
       {inFlight.map((signal) => (
         <SignalCraft key={signal.id} signal={signal} store={store} />
       ))}
@@ -90,15 +98,15 @@ function SystemScene({
 }
 
 function PortraitScene({ planet, store }: { planet: PlanetId; store: GalaxyStore }) {
-  const meta = PLANET_META[planet];
+  const view = planetView(store, planet);
   return (
     <>
       <color attach="background" args={["#05070F"]} />
       <ambientLight intensity={0.35} />
-      <pointLight position={[3, 2, 4]} intensity={55} color={meta.accent} />
-      <pointLight position={[-3, -1, 2]} intensity={18} color={meta.accentSoft} />
+      <pointLight position={[3, 2, 4]} intensity={55} color={view.accent} />
+      <pointLight position={[-3, -1, 2]} intensity={18} color={view.accentSoft} />
       <Stars radius={60} depth={30} count={700} factor={2.4} saturation={0} fade speed={0.35} />
-      <PortraitPlanet id={planet} colony={planetColony(store, planet)} />
+      <PortraitPlanet id={planet} view={view} colony={planetColony(store, planet)} />
     </>
   );
 }
@@ -108,7 +116,7 @@ function SurfaceScene({ planet, store }: { planet: PlanetId; store: GalaxyStore 
     <>
       <color attach="background" args={["#05070F"]} />
       <Stars radius={50} depth={24} count={500} factor={2} saturation={0} fade speed={0.2} />
-      <PlanetSurfaceScene id={planet} colony={planetColony(store, planet)} />
+      <PlanetSurfaceScene id={planet} store={store} colony={planetColony(store, planet)} />
     </>
   );
 }
@@ -132,11 +140,17 @@ export function PlanetCanvas({
 }) {
   const data = store ?? emptyStore();
   const mode = view ?? (planet === "bridge" ? "system" : "portrait");
+  const farthest = Math.max(
+    6,
+    ...data.planets.filter((p) => p.enabled).map((p) => planetView(data, p.id).orbit.a)
+  );
   const camera = useMemo(() => {
-    if (mode === "system") return { position: [0, 2.6, 9.2] as [number, number, number], fov: 42 };
+    if (mode === "system") {
+      return { position: [0, 2.6, Math.max(9.2, farthest + 3.2)] as [number, number, number], fov: 42 };
+    }
     if (mode === "surface") return { position: [2.4, 2.2, 3.4] as [number, number, number], fov: 46 };
     return { position: [0, 0.4, 4.2] as [number, number, number], fov: 42 };
-  }, [mode]);
+  }, [mode, farthest]);
 
   return (
     <div className={className}>

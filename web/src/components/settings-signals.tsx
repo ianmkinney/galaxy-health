@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
-import { AgentAccessPanel, TestDataPanel } from "@/components/settings-panels";
+import { AgentAccessPanel, DriveStoragePanel, TestDataPanel } from "@/components/settings-panels";
 import { useGalaxy } from "@/components/galaxy-provider";
 import {
   DEFAULT_AI,
   DEFAULT_PLANETS,
-  PLANET_META,
+  isCorePlanet,
+  planetView,
   type AiSettings,
-  type PlanetId,
 } from "@/lib/galaxy-types";
 
 export function SettingsPage() {
@@ -124,19 +124,40 @@ export function SettingsPage() {
         </GlassPanel>
 
         <AgentAccessPanel />
+        <DriveStoragePanel />
         <TestDataPanel />
 
         <GlassPanel title="Planet registry" accent="#4CE0FF" index={1}>
           <div className="space-y-4">
-            {store.planets.map((planet) => (
+            {store.planets.map((planet) => {
+              const view = planetView(store, planet.id);
+              return (
               <div key={planet.id} className="border-t border-white/10 pt-4 first:border-0 first:pt-0">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">
-                      {PLANET_META[planet.id as PlanetId].domain}
+                      {view.domain}
                     </div>
-                    <div className="text-[10px] text-white/40">id: {planet.id}</div>
+                    <div className="text-[10px] text-white/40">id: {planet.id}{view.custom ? " · custom" : ""}</div>
                   </div>
+                  <div className="flex items-center gap-3">
+                  {view.custom ? (
+                    <button
+                      type="button"
+                      className="text-[10px] uppercase tracking-wider text-white/30 hover:text-rose-300"
+                      onClick={async () => {
+                        await update((d) => ({
+                          ...d,
+                          planets: d.planets.filter((p) => p.id !== planet.id),
+                          worlds: d.worlds.filter((w) => w.id !== planet.id),
+                          systems: d.systems.filter((s) => s.planet_id !== planet.id),
+                          entries: d.entries.filter((e) => e.planet_id !== planet.id),
+                        }));
+                      }}
+                    >
+                      Unmake
+                    </button>
+                  ) : null}
                   <label className="flex items-center gap-2 text-xs text-white/60">
                     Visible
                     <input
@@ -147,11 +168,14 @@ export function SettingsPage() {
                         await update((d) => {
                           const row = d.planets.find((p) => p.id === planet.id);
                           if (row) row.enabled = enabled;
+                          const world = d.worlds.find((w) => w.id === planet.id);
+                          if (world) world.enabled = enabled;
                           return d;
                         });
                       }}
                     />
                   </label>
+                  </div>
                 </div>
                 <input
                   defaultValue={planet.name}
@@ -161,13 +185,16 @@ export function SettingsPage() {
                     await update((d) => {
                       const row = d.planets.find((p) => p.id === planet.id);
                       if (row) row.name = name;
+                      const world = d.worlds.find((w) => w.id === planet.id);
+                      if (world) world.name = name;
                       return d;
                     });
                   }}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40"
                 />
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="mt-4">
             <ShimmerButton
@@ -176,7 +203,8 @@ export function SettingsPage() {
               disabled={saving}
               onClick={async () => {
                 await update((d) => {
-                  d.planets = DEFAULT_PLANETS.map((p) => ({ ...p }));
+                  const custom = d.planets.filter((p) => !isCorePlanet(p.id));
+                  d.planets = [...DEFAULT_PLANETS.map((p) => ({ ...p })), ...custom];
                   return d;
                 });
               }}

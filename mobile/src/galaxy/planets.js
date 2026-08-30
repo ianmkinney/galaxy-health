@@ -63,7 +63,7 @@ export const PLANET_BY_ID = PLANETS.reduce((acc, planet) => {
 
 export const getPlanet = (id) => PLANET_BY_ID[id] ?? null;
 
-// The star at the centre. Not a planet — it is the user's own baseline.
+// The core at the centre. Not a star — a neural lattice. The user is the nucleus.
 export const STAR = {
   id: 'core',
   defaultName: 'Core',

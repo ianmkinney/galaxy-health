@@ -130,6 +130,56 @@ export const MIGRATIONS = [
         ON observatory_markers(collected_on, created_at DESC);
     `,
   },
+  {
+    version: 6,
+    name: 'galley: household loop — recipes, pantry, grocery, meal plans',
+    sql: `
+      CREATE TABLE IF NOT EXISTS galley_recipes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        ingredients TEXT,
+        instructions TEXT,
+        tags TEXT,
+        calories REAL,
+        protein REAL,
+        cooked_count INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS galley_pantry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        quantity REAL DEFAULT 1,
+        unit TEXT,
+        location TEXT,
+        category TEXT,
+        expires_on TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS galley_grocery (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        quantity REAL DEFAULT 1,
+        unit TEXT,
+        checked INTEGER NOT NULL DEFAULT 0,
+        recipe_name TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS galley_meal_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day TEXT NOT NULL,
+        slot TEXT NOT NULL,
+        title TEXT NOT NULL,
+        recipe_id INTEGER,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_galley_meal_plans_day
+        ON galley_meal_plans(day, slot);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce(

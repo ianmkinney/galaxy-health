@@ -1,6 +1,42 @@
-export type PlanetId = "galley" | "atlas" | "lumen" | "observatory";
+export type CorePlanetId = "galley" | "atlas" | "lumen" | "observatory";
+export type PlanetId = string;
+
+export const CORE_PLANET_IDS: CorePlanetId[] = ["galley", "atlas", "lumen", "observatory"];
+
+export function isCorePlanet(id: string): id is CorePlanetId {
+  return (CORE_PLANET_IDS as string[]).includes(id);
+}
 
 export type DataSource = "user" | "test" | "agent";
+
+export type BuildingKind =
+  | "archive"
+  | "silo"
+  | "hall"
+  | "forge"
+  | "track"
+  | "sanctuary"
+  | "lab"
+  | "market"
+  | "kitchen"
+  | "spire";
+
+export const BUILDING_KINDS: BuildingKind[] = [
+  "archive",
+  "silo",
+  "hall",
+  "forge",
+  "track",
+  "sanctuary",
+  "lab",
+  "market",
+  "kitchen",
+  "spire",
+];
+
+export function isBuildingKind(value: string): value is BuildingKind {
+  return (BUILDING_KINDS as string[]).includes(value);
+}
 
 export type PlanetRecord = {
   id: PlanetId;
@@ -171,9 +207,61 @@ export type AgentSettings = {
   created_at: number | null;
 };
 
+export type TrackingFieldKind = "number" | "scale" | "text" | "duration" | "boolean";
+
+export type TrackingField = {
+  id: string;
+  label: string;
+  kind: TrackingFieldKind;
+  unit?: string;
+  min?: number;
+  max?: number;
+};
+
+export type TrackingSystem = {
+  id: string;
+  planet_id: PlanetId;
+  name: string;
+  description: string;
+  building_kind: BuildingKind;
+  building_name: string;
+  fields: TrackingField[];
+  created_at: number;
+  source?: DataSource;
+};
+
+export type TrackingEntry = {
+  id: string;
+  system_id: string;
+  planet_id: PlanetId;
+  values: Record<string, string | number | boolean>;
+  notes?: string;
+  logged_on: string;
+  created_at: number;
+  source?: DataSource;
+};
+
+export type CustomWorld = {
+  id: PlanetId;
+  name: string;
+  description: string;
+  domain: string;
+  accent: string;
+  accentSoft: string;
+  vibe: string;
+  cadence: string;
+  enabled: boolean;
+  created_at: number;
+  orbit: OrbitSpec;
+  source?: DataSource;
+};
+
 export type GalaxyStore = {
-  version: 3;
+  version: 4;
   planets: PlanetRecord[];
+  worlds: CustomWorld[];
+  systems: TrackingSystem[];
+  entries: TrackingEntry[];
   meals: Meal[];
   recipes: Recipe[];
   pantry: PantryItem[];
@@ -209,7 +297,7 @@ export type OrbitSpec = {
 };
 
 export const PLANET_META: Record<
-  PlanetId,
+  CorePlanetId,
   {
     domain: string;
     accent: string;
@@ -286,6 +374,92 @@ export const PLANET_META: Record<
   },
 };
 
+/** Outer orbits beyond Observatory. Index 0 sits just past the lab ring. */
+export function outerOrbitForIndex(index: number): OrbitSpec {
+  const a = 6.2 + Math.max(0, index) * 0.85;
+  return {
+    a,
+    periodSec: Math.round(78 * Math.pow(a / 5.35, 1.5)),
+    inclination: 0.08 + (index % 5) * 0.06,
+    phase: ((index * 1.73) % (Math.PI * 2)),
+    eccentricity: 0.04 + (index % 3) * 0.02,
+    radius: 0.26 + (index % 4) * 0.03,
+  };
+}
+
+export type PlanetView = {
+  id: PlanetId;
+  name: string;
+  domain: string;
+  accent: string;
+  accentSoft: string;
+  route: string;
+  vibe: string;
+  cadence: string;
+  orbit: OrbitSpec;
+  enabled: boolean;
+  custom: boolean;
+  description?: string;
+};
+
+export function planetView(store: GalaxyStore, id: PlanetId): PlanetView {
+  const row = store.planets.find((p) => p.id === id);
+  if (isCorePlanet(id)) {
+    const meta = PLANET_META[id];
+    return {
+      id,
+      name: row?.name ?? id,
+      domain: meta.domain,
+      accent: meta.accent,
+      accentSoft: meta.accentSoft,
+      route: meta.route,
+      vibe: meta.vibe,
+      cadence: meta.cadence,
+      orbit: meta.orbit,
+      enabled: row?.enabled !== false,
+      custom: false,
+    };
+  }
+  const world = (store.worlds ?? []).find((w) => w.id === id);
+  const customIndex = Math.max(
+    0,
+    (store.worlds ?? []).findIndex((w) => w.id === id)
+  );
+  if (world) {
+    return {
+      id: world.id,
+      name: row?.name ?? world.name,
+      domain: world.domain,
+      accent: world.accent,
+      accentSoft: world.accentSoft,
+      route: `/world/${world.id}`,
+      vibe: world.vibe,
+      cadence: world.cadence,
+      orbit: world.orbit ?? outerOrbitForIndex(customIndex),
+      enabled: row?.enabled !== false && world.enabled !== false,
+      custom: true,
+      description: world.description,
+    };
+  }
+  return {
+    id,
+    name: row?.name ?? id,
+    domain: "Custom world",
+    accent: "#4CE0FF",
+    accentSoft: "#9AF0FF",
+    route: `/world/${id}`,
+    vibe: "Newly forged",
+    cadence: "As you log",
+    orbit: outerOrbitForIndex(customIndex >= 0 ? customIndex : (store.worlds ?? []).length),
+    enabled: row?.enabled !== false,
+    custom: true,
+  };
+}
+
+export function allPlanetViews(store: GalaxyStore): PlanetView[] {
+  return store.planets.map((p) => planetView(store, p.id));
+}
+
 /** The centre is you — a pulsing neural lattice, never a sun. */
 export const CORE_META = {
   id: "core",
@@ -307,8 +481,11 @@ export const DEFAULT_AGENT: AgentSettings = {
 
 export function emptyStore(): GalaxyStore {
   return {
-    version: 3,
+    version: 4,
     planets: DEFAULT_PLANETS.map((p) => ({ ...p })),
+    worlds: [],
+    systems: [],
+    entries: [],
     meals: [],
     recipes: [],
     pantry: [],
@@ -326,7 +503,29 @@ export function emptyStore(): GalaxyStore {
   };
 }
 
-/** Migrate Drive blobs (and partial objects) up to v3. */
+function mergePlanets(data: Partial<GalaxyStore>): PlanetRecord[] {
+  const cores = DEFAULT_PLANETS.map((def) => {
+    const existing = data.planets?.find((p) => p.id === def.id);
+    return existing ? { id: def.id, name: existing.name || def.name, enabled: existing.enabled !== false } : { ...def };
+  });
+  const seen = new Set(cores.map((p) => p.id));
+  const extras: PlanetRecord[] = [];
+  for (const p of data.planets ?? []) {
+    if (!isCorePlanet(p.id) && !seen.has(p.id)) {
+      extras.push({ id: p.id, name: p.name, enabled: p.enabled !== false });
+      seen.add(p.id);
+    }
+  }
+  for (const world of data.worlds ?? []) {
+    if (!seen.has(world.id)) {
+      extras.push({ id: world.id, name: world.name, enabled: world.enabled !== false });
+      seen.add(world.id);
+    }
+  }
+  return [...cores, ...extras];
+}
+
+/** Migrate Drive blobs (and partial objects) up to v4. */
 export function normalizeStore(raw: unknown): GalaxyStore {
   const base = emptyStore();
   if (!raw || typeof raw !== "object") return base;
@@ -335,8 +534,11 @@ export function normalizeStore(raw: unknown): GalaxyStore {
   return {
     ...base,
     ...data,
-    version: 3,
-    planets: data.planets?.length ? data.planets : base.planets,
+    version: 4,
+    planets: mergePlanets(data),
+    worlds: data.worlds ?? [],
+    systems: data.systems ?? [],
+    entries: data.entries ?? [],
     meals: data.meals ?? [],
     recipes: data.recipes ?? [],
     pantry: data.pantry ?? [],

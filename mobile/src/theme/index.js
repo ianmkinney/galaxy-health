@@ -73,10 +73,10 @@ export const planetAccents = {
 };
 
 export const starColor = {
-  core: '#FFF7DC',
-  mid: '#FFD98A',
-  deep: '#FF9C3D',
-  glow: 'rgba(255, 205, 130, 0.5)',
+  core: '#BFF4FF',
+  mid: '#7A8CFF',
+  deep: '#4B2E9E',
+  glow: 'rgba(122, 240, 255, 0.45)',
 };
 
 const themes = {

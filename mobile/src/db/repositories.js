@@ -209,6 +209,90 @@ export const galleyRepo = {
     );
     return row ?? { calories: 0, protein: 0, carbs: 0, fat: 0, entries: 0 };
   },
+
+  async addRecipe(recipe) {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `INSERT INTO galley_recipes (title, ingredients, instructions, tags, calories, protein, cooked_count, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+      [
+        recipe.title,
+        recipe.ingredients ?? '',
+        recipe.instructions ?? '',
+        recipe.tags ?? '',
+        num(recipe.calories),
+        num(recipe.protein),
+        Date.now(),
+      ]
+    );
+    return result.lastInsertRowId;
+  },
+
+  async listRecipes() {
+    const db = getDatabase();
+    return db.getAllAsync('SELECT * FROM galley_recipes ORDER BY created_at DESC');
+  },
+
+  async addPantry(item) {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `INSERT INTO galley_pantry (name, quantity, unit, location, category, expires_on, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        item.name,
+        num(item.quantity) || 1,
+        item.unit ?? '',
+        item.location ?? 'galley',
+        item.category ?? null,
+        item.expiresOn ?? null,
+        Date.now(),
+      ]
+    );
+    return result.lastInsertRowId;
+  },
+
+  async listPantry() {
+    const db = getDatabase();
+    return db.getAllAsync('SELECT * FROM galley_pantry ORDER BY created_at DESC');
+  },
+
+  async addGrocery(item) {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `INSERT INTO galley_grocery (name, quantity, unit, checked, recipe_name, created_at)
+       VALUES (?, ?, ?, 0, ?, ?)`,
+      [item.name, num(item.quantity) || 1, item.unit ?? '', item.recipeName ?? null, Date.now()]
+    );
+    return result.lastInsertRowId;
+  },
+
+  async listGrocery() {
+    const db = getDatabase();
+    return db.getAllAsync('SELECT * FROM galley_grocery ORDER BY created_at DESC');
+  },
+
+  async toggleGrocery(id, checked) {
+    const db = getDatabase();
+    await db.runAsync('UPDATE galley_grocery SET checked = ? WHERE id = ?', [checked ? 1 : 0, id]);
+  },
+
+  async addPlan(plan) {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `INSERT INTO galley_meal_plans (day, slot, title, recipe_id, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [plan.day ?? todayKey(), plan.slot ?? 'dinner', plan.title, plan.recipeId ?? null, Date.now()]
+    );
+    return result.lastInsertRowId;
+  },
+
+  async listPlans(day = todayKey()) {
+    const db = getDatabase();
+    return db.getAllAsync(
+      'SELECT * FROM galley_meal_plans WHERE day = ? ORDER BY slot ASC',
+      [day]
+    );
+  },
 };
 
 /* -------------------------------------------------------------------- atlas */

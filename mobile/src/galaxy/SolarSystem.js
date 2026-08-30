@@ -22,6 +22,7 @@ import {
   signalPoint,
 } from './math3d';
 import { STAR } from './planets';
+import { buildNeuralCore2d } from './neuralCore';
 import PlanetBody from './PlanetBody';
 import Starfield from './Starfield';
 
@@ -216,6 +217,7 @@ const SolarSystem = ({
   );
 
   const starGlow = projectStatic(0, 0, 0, scale).k;
+  const core = useMemo(() => buildNeuralCore2d(STAR.radius * 0.92 * starGlow, 42, 16), [starGlow]);
 
   return (
     <View style={[styles.root, { width, height }]}>
@@ -239,15 +241,9 @@ const SolarSystem = ({
             <Stop offset="1" stopColor="#0E5E7A" stopOpacity="0" />
           </RadialGradient>
           <RadialGradient id="star-glow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0.16" stopColor={starColor.core} stopOpacity="0.95" />
-            <Stop offset="0.34" stopColor={starColor.mid} stopOpacity="0.5" />
-            <Stop offset="0.62" stopColor={starColor.deep} stopOpacity="0.16" />
+            <Stop offset="0.16" stopColor={starColor.core} stopOpacity="0.55" />
+            <Stop offset="0.42" stopColor={starColor.mid} stopOpacity="0.22" />
             <Stop offset="1" stopColor={starColor.deep} stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id="star-core" cx="50%" cy="46%" r="52%">
-            <Stop offset="0" stopColor="#FFFFFF" />
-            <Stop offset="0.5" stopColor={starColor.core} />
-            <Stop offset="1" stopColor={starColor.mid} />
           </RadialGradient>
         </Defs>
 
@@ -268,8 +264,27 @@ const SolarSystem = ({
           ) : null
         )}
 
-        <Circle cx={0} cy={0} r={STAR.radius * 2.6 * starGlow} fill="url(#star-glow)" />
-        <Circle cx={0} cy={0} r={STAR.radius * 0.62 * starGlow} fill="url(#star-core)" />
+        <Circle cx={0} cy={0} r={STAR.radius * 2.4 * starGlow} fill="url(#star-glow)" />
+        {core.axons.map((d, index) => (
+          <Path
+            key={`axon-${index}`}
+            d={d}
+            stroke={index % 2 === 0 ? starColor.core : starColor.mid}
+            strokeWidth={1.1}
+            strokeOpacity={0.45}
+            fill="none"
+          />
+        ))}
+        {core.points.map((p, index) => (
+          <Circle
+            key={`node-${index}`}
+            cx={p.x}
+            cy={p.y}
+            r={1.6}
+            fill={starColor.core}
+            opacity={0.9}
+          />
+        ))}
 
         {/* Near halves in front of it. */}
         {rings.map((ring) =>

@@ -1,76 +1,36 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
-import type { PlanetId } from "@/lib/galaxy-types";
-import { PLANET_META } from "@/lib/galaxy-types";
+import type { PlanetId, PlanetView } from "@/lib/galaxy-types";
 import { orbitWorldPosition } from "@/lib/neural-geometry";
 import type { PlanetColony } from "@/lib/civilization";
+import { VoxelBuildingField } from "./voxel-building";
 
-function CityScatter({
-  count,
-  radius,
-  color,
-}: {
-  count: number;
-  radius: number;
-  color: string;
-}) {
-  const mesh = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const n = Math.max(0, Math.min(64, count));
-
-  useLayoutEffect(() => {
-    if (!mesh.current) return;
-    const golden = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < n; i++) {
-      const y = 1 - (i / Math.max(1, n - 1)) * 2;
-      const rY = Math.sqrt(Math.max(0, 1 - y * y));
-      const theta = golden * i;
-      dummy.position.set(
-        Math.cos(theta) * rY * radius * 1.04,
-        y * radius * 1.04,
-        Math.sin(theta) * rY * radius * 1.04
-      );
-      dummy.lookAt(0, 0, 0);
-      dummy.rotateX(Math.PI / 2);
-      dummy.scale.set(0.035, 0.06 + (i % 6) * 0.018, 0.035);
-      dummy.updateMatrix();
-      mesh.current.setMatrixAt(i, dummy.matrix);
-    }
-    mesh.current.count = n;
-    mesh.current.instanceMatrix.needsUpdate = true;
-  }, [dummy, n, radius]);
-
-  if (n === 0) return null;
-
-  return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, 64]}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.1} roughness={0.35} />
-    </instancedMesh>
-  );
+function GlobeSpin({ speed, children }: { speed: number; children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.y += dt * speed;
+  });
+  return <group ref={ref}>{children}</group>;
 }
 
 function PlanetBody({
   id,
   radius,
+  accent,
+  accentSoft,
 }: {
   id: PlanetId;
   radius: number;
+  accent: string;
+  accentSoft: string;
 }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const meta = PLANET_META[id];
-  useFrame((_, dt) => {
-    if (!ref.current) return;
-    ref.current.rotation.y += dt * (id === "observatory" ? 0.12 : 0.28);
-  });
-
   return (
     <group>
-      <mesh ref={ref}>
+      <mesh>
         {id === "atlas" ? (
           <icosahedronGeometry args={[radius, 1]} />
         ) : id === "observatory" ? (
@@ -80,35 +40,35 @@ function PlanetBody({
         )}
         {id === "lumen" ? (
           <meshPhysicalMaterial
-            color={meta.accent}
+            color={accent}
             roughness={0.08}
             metalness={0.05}
             transmission={0.42}
             thickness={0.55}
             transparent
             opacity={0.92}
-            emissive={meta.accent}
+            emissive={accent}
             emissiveIntensity={0.32}
           />
         ) : (
           <meshStandardMaterial
-            color={meta.accent}
+            color={accent}
             roughness={id === "atlas" ? 0.78 : 0.32}
             metalness={id === "observatory" ? 0.72 : 0.28}
             flatShading={id === "atlas"}
-            emissive={meta.accent}
+            emissive={accent}
             emissiveIntensity={id === "galley" ? 0.22 : 0.16}
           />
         )}
       </mesh>
       <mesh scale={1.12}>
         <sphereGeometry args={[radius, 24, 18]} />
-        <meshBasicMaterial color={meta.accent} transparent opacity={0.11} side={THREE.BackSide} />
+        <meshBasicMaterial color={accent} transparent opacity={0.11} side={THREE.BackSide} />
       </mesh>
       {id === "observatory" ? (
         <mesh rotation={[Math.PI / 2.15, 0, 0.28]}>
           <ringGeometry args={[radius * 1.15, radius * 1.55, 64]} />
-          <meshBasicMaterial color={meta.accent} transparent opacity={0.55} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={accent} transparent opacity={0.55} side={THREE.DoubleSide} />
         </mesh>
       ) : null}
       {id === "galley" ? (
@@ -120,7 +80,7 @@ function PlanetBody({
       {id === "lumen" ? (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[radius * 1.18, 0.018, 8, 64]} />
-          <meshBasicMaterial color={meta.accentSoft} transparent opacity={0.45} />
+          <meshBasicMaterial color={accentSoft} transparent opacity={0.45} />
         </mesh>
       ) : null}
     </group>
@@ -131,19 +91,20 @@ export function OrbitingWorld({
   id,
   colony,
   name,
+  view,
   interactive,
   onSelect,
 }: {
   id: PlanetId;
   colony: PlanetColony;
   name: string;
+  view: PlanetView;
   interactive?: boolean;
   onSelect?: (id: PlanetId) => void;
 }) {
   const group = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
-  const meta = PLANET_META[id];
-  const { a, eccentricity, inclination, phase, periodSec, radius } = meta.orbit;
+  const { a, eccentricity, inclination, phase, periodSec, radius } = view.orbit;
   const ringPts = useMemo(() => {
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= 128; i++) {
@@ -151,6 +112,7 @@ export function OrbitingWorld({
     }
     return pts;
   }, [a, eccentricity, inclination]);
+  const weathered = colony.buildings.filter((b) => b.condition !== "sound").length;
 
   useFrame(({ clock }) => {
     if (!group.current) return;
@@ -161,11 +123,9 @@ export function OrbitingWorld({
     group.current.scale.setScalar(pulse);
   });
 
-  const buildings = Math.min(64, colony.buildings.length * 8 + Math.round(colony.population / 4));
-
   return (
     <group>
-      <Line points={ringPts} color={meta.accent} transparent opacity={0.22} lineWidth={1} />
+      <Line points={ringPts} color={view.accent} transparent opacity={0.22} lineWidth={1} />
       <group
         ref={group}
         onPointerOver={(e) => {
@@ -184,21 +144,40 @@ export function OrbitingWorld({
           onSelect?.(id);
         }}
       >
-        <PlanetBody id={id} radius={radius} />
-        <CityScatter count={buildings} radius={radius} color={meta.accentSoft} />
+        <GlobeSpin speed={id === "observatory" ? 0.12 : 0.28}>
+          <PlanetBody id={id} radius={radius} accent={view.accent} accentSoft={view.accentSoft} />
+          <VoxelBuildingField
+            buildings={colony.buildings}
+            color={view.accent}
+            mode="orbit"
+            planetRadius={id === "observatory" ? radius * 0.72 : radius}
+          />
+        </GlobeSpin>
+        <pointLight
+          position={[0, radius * 2.4, radius * 1.6]}
+          intensity={6}
+          distance={radius * 8}
+          color="#fff4e8"
+        />
         {hovered ? (
           <Html distanceFactor={10} position={[0, radius + 0.55, 0]} style={{ pointerEvents: "none" }} zIndexRange={[20, 0]}>
             <div className="w-56 rounded-2xl border border-white/15 bg-[#05070Fcc] p-3 text-left shadow-[0_0_28px_rgba(76,224,255,0.18)] backdrop-blur-md">
-              <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: meta.accent }}>
-                {meta.domain}
+              <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: view.accent }}>
+                {view.domain}
               </div>
               <div className="mt-0.5 text-sm font-bold text-white">{name}</div>
               <div className="mt-1 text-[11px] text-white/55">{colony.headline}</div>
               <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px] text-white/70">
                 <span>Pop {colony.population}</span>
                 <span>{colony.buildings.length} buildings</span>
-                <span>{meta.cadence}</span>
-                <span>{Math.round(periodSec)}s orbit</span>
+                <span>{view.cadence}</span>
+                <span>
+                  {weathered
+                    ? `${weathered} weathering`
+                    : colony.buildings.length
+                      ? "structures sound"
+                      : "uninhabited"}
+                </span>
               </div>
               <div className="mt-2 text-[10px] uppercase tracking-widest text-white/35">
                 Click to land · scroll to zoom
@@ -211,15 +190,30 @@ export function OrbitingWorld({
   );
 }
 
-export function PortraitPlanet({ id, colony }: { id: PlanetId; colony?: PlanetColony }) {
-  const radius = PLANET_META[id].orbit.radius * 2.4;
-  const buildings = colony
-    ? Math.min(64, colony.buildings.length * 10 + Math.round(colony.population / 3))
-    : 8;
+export function PortraitPlanet({
+  id,
+  colony,
+  view,
+}: {
+  id: PlanetId;
+  colony?: PlanetColony;
+  view: PlanetView;
+}) {
+  const radius = view.orbit.radius * 2.4;
+  const bodyRadius = id === "observatory" ? radius * 0.72 : radius;
   return (
     <group>
-      <PlanetBody id={id} radius={radius} />
-      <CityScatter count={buildings} radius={radius} color={PLANET_META[id].accentSoft} />
+      <GlobeSpin speed={0.18}>
+        <PlanetBody id={id} radius={radius} accent={view.accent} accentSoft={view.accentSoft} />
+        {colony ? (
+          <VoxelBuildingField
+            buildings={colony.buildings}
+            color={view.accent}
+            mode="orbit"
+            planetRadius={bodyRadius}
+          />
+        ) : null}
+      </GlobeSpin>
     </group>
   );
 }
