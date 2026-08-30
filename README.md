@@ -1,5 +1,7 @@
 # Galaxy Health
 
+Canonical repository: [github.com/ianmkinney/galaxy-health](https://github.com/ianmkinney/galaxy-health)
+
 Monorepo with two products that share the solar-system health metaphor:
 
 ```
