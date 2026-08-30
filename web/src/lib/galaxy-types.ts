@@ -1,5 +1,7 @@
 export type PlanetId = "galley" | "atlas" | "lumen" | "observatory";
 
+export type DataSource = "user" | "test" | "agent";
+
 export type PlanetRecord = {
   id: PlanetId;
   name: string;
@@ -14,13 +16,17 @@ export type Meal = {
   protein: number;
   carbs: number;
   fat: number;
+  notes?: string;
+  recipe_id?: string;
   logged_on: string;
   created_at: number;
+  source?: DataSource;
 };
 
 export type Recipe = {
   id: string;
   title: string;
+  description?: string;
   ingredients: string;
   instructions: string;
   tags: string;
@@ -29,7 +35,16 @@ export type Recipe = {
   carbs?: number;
   fat?: number;
   prep_minutes?: number;
+  cook_minutes?: number;
+  servings?: number;
+  difficulty?: string;
+  cuisine?: string;
+  notes?: string;
+  source_url?: string;
+  cooked_count?: number;
+  last_cooked_on?: string;
   created_at: number;
+  source?: DataSource;
 };
 
 export type PantryItem = {
@@ -38,8 +53,11 @@ export type PantryItem = {
   quantity: number;
   unit: string;
   location: string;
+  category?: string;
+  notes?: string;
   expires_on?: string;
   created_at: number;
+  source?: DataSource;
 };
 
 export type GroceryItem = {
@@ -48,16 +66,24 @@ export type GroceryItem = {
   quantity: number;
   unit: string;
   checked: boolean;
+  category?: string;
+  recipe_id?: string;
+  recipe_name?: string;
+  notes?: string;
   created_at: number;
+  source?: DataSource;
 };
 
 export type MealPlanSlot = {
   id: string;
-  day: string; // YYYY-MM-DD
+  day: string;
   slot: "breakfast" | "lunch" | "dinner" | "snack";
   title: string;
   recipe_id?: string;
+  servings?: number;
+  notes?: string;
   created_at: number;
+  source?: DataSource;
 };
 
 export type Workout = {
@@ -68,8 +94,19 @@ export type Workout = {
   intensity: number;
   burn: number;
   notes?: string;
+  program_id?: string;
   logged_on: string;
   created_at: number;
+  source?: DataSource;
+};
+
+export type TrainingProgram = {
+  id: string;
+  name: string;
+  focus: string;
+  days: { name: string; focus: string; movements: string }[];
+  created_at: number;
+  source?: DataSource;
 };
 
 export type CheckIn = {
@@ -80,6 +117,18 @@ export type CheckIn = {
   note: string;
   logged_on: string;
   created_at: number;
+  source?: DataSource;
+};
+
+export type Ritual = {
+  id: string;
+  name: string;
+  kind: "breath" | "stretch" | "journal" | "walk" | "other";
+  minutes: number;
+  logged_on?: string;
+  note?: string;
+  created_at: number;
+  source?: DataSource;
 };
 
 export type Marker = {
@@ -93,6 +142,7 @@ export type Marker = {
   notes?: string;
   collected_on: string;
   created_at: number;
+  source?: DataSource;
 };
 
 export type Signal = {
@@ -105,6 +155,7 @@ export type Signal = {
   seen: boolean;
   delivered_at: number | null;
   created_at: number;
+  source?: DataSource;
 };
 
 export type AiSettings = {
@@ -114,8 +165,14 @@ export type AiSettings = {
   model: string;
 };
 
+export type AgentSettings = {
+  /** Bearer token for /api/ingest — treat like a password */
+  token: string | null;
+  created_at: number | null;
+};
+
 export type GalaxyStore = {
-  version: 2;
+  version: 3;
   planets: PlanetRecord[];
   meals: Meal[];
   recipes: Recipe[];
@@ -123,10 +180,13 @@ export type GalaxyStore = {
   grocery: GroceryItem[];
   mealPlans: MealPlanSlot[];
   workouts: Workout[];
+  programs: TrainingProgram[];
   checkins: CheckIn[];
+  rituals: Ritual[];
   markers: Marker[];
   signals: Signal[];
   ai: AiSettings;
+  agent: AgentSettings;
   updated_at: number;
 };
 
@@ -137,6 +197,17 @@ export const DEFAULT_PLANETS: PlanetRecord[] = [
   { id: "observatory", name: "Observatory", enabled: true },
 ];
 
+export type OrbitSpec = {
+  /** Semi-major axis in scene units — inner worlds are logged more often. */
+  a: number;
+  /** Independent sidereal period in seconds (Kepler-ish: T ∝ a^1.5). */
+  periodSec: number;
+  inclination: number;
+  phase: number;
+  eccentricity: number;
+  radius: number;
+};
+
 export const PLANET_META: Record<
   PlanetId,
   {
@@ -145,6 +216,8 @@ export const PLANET_META: Record<
     accentSoft: string;
     route: string;
     vibe: string;
+    cadence: string;
+    orbit: OrbitSpec;
   }
 > = {
   galley: {
@@ -152,29 +225,73 @@ export const PLANET_META: Record<
     accent: "#FF8A3D",
     accentSoft: "#FFB37A",
     route: "/galley",
-    vibe: "Copper kitchen · warm steam · amber plasma",
+    vibe: "Copper kitchens · steam vents · recipe archives",
+    cadence: "Several times a day",
+    orbit: {
+      a: 2.15,
+      periodSec: 18,
+      inclination: 0.14,
+      phase: 0.6,
+      eccentricity: 0.05,
+      radius: 0.38,
+    },
   },
   atlas: {
     domain: "Strength & movement",
     accent: "#FF4D6D",
     accentSoft: "#FF8FA3",
     route: "/atlas",
-    vibe: "Forge load · crimson arcs · tectonic force",
+    vibe: "Forge halls · load tracks · program towers",
+    cadence: "Most days",
+    orbit: {
+      a: 3.05,
+      periodSec: 31,
+      inclination: 0.22,
+      phase: 2.15,
+      eccentricity: 0.07,
+      radius: 0.34,
+    },
   },
   lumen: {
     domain: "Mind & recovery",
     accent: "#4CE0FF",
     accentSoft: "#9AF0FF",
     route: "/lumen",
-    vibe: "Soft aurora · breath cycles · clear light",
+    vibe: "Aurora sanctuaries · breath gardens · sleep halls",
+    cadence: "Daily recovery",
+    orbit: {
+      a: 4.15,
+      periodSec: 48,
+      inclination: 0.1,
+      phase: 4.05,
+      eccentricity: 0.04,
+      radius: 0.4,
+    },
   },
   observatory: {
     domain: "Labs & biomarkers",
     accent: "#A98BFF",
     accentSoft: "#D0C0FF",
     route: "/observatory",
-    vibe: "Ringed station · scan lines · violet glass",
+    vibe: "Ringed station · assay spires · deep-field glass",
+    cadence: "A few times a year",
+    orbit: {
+      a: 5.35,
+      periodSec: 78,
+      inclination: 0.28,
+      phase: 5.35,
+      eccentricity: 0.1,
+      radius: 0.28,
+    },
   },
+};
+
+/** The centre is you — a pulsing neural lattice, never a sun. */
+export const CORE_META = {
+  id: "core",
+  name: "The Core",
+  domain: "You",
+  vibe: "A living equation of points and firing axons. Every log, file, and system you set up pulses through it.",
 };
 
 export const DEFAULT_AI: AiSettings = {
@@ -183,9 +300,14 @@ export const DEFAULT_AI: AiSettings = {
   model: "gemini-2.0-flash",
 };
 
+export const DEFAULT_AGENT: AgentSettings = {
+  token: null,
+  created_at: null,
+};
+
 export function emptyStore(): GalaxyStore {
   return {
-    version: 2,
+    version: 3,
     planets: DEFAULT_PLANETS.map((p) => ({ ...p })),
     meals: [],
     recipes: [],
@@ -193,15 +315,18 @@ export function emptyStore(): GalaxyStore {
     grocery: [],
     mealPlans: [],
     workouts: [],
+    programs: [],
     checkins: [],
+    rituals: [],
     markers: [],
     signals: [],
     ai: { ...DEFAULT_AI, keys: {} },
+    agent: { ...DEFAULT_AGENT },
     updated_at: Date.now(),
   };
 }
 
-/** Migrate v1 Drive blobs (and partial objects) up to v2. */
+/** Migrate Drive blobs (and partial objects) up to v3. */
 export function normalizeStore(raw: unknown): GalaxyStore {
   const base = emptyStore();
   if (!raw || typeof raw !== "object") return base;
@@ -210,7 +335,7 @@ export function normalizeStore(raw: unknown): GalaxyStore {
   return {
     ...base,
     ...data,
-    version: 2,
+    version: 3,
     planets: data.planets?.length ? data.planets : base.planets,
     meals: data.meals ?? [],
     recipes: data.recipes ?? [],
@@ -218,13 +343,19 @@ export function normalizeStore(raw: unknown): GalaxyStore {
     grocery: data.grocery ?? [],
     mealPlans: data.mealPlans ?? [],
     workouts: data.workouts ?? [],
+    programs: data.programs ?? [],
     checkins: data.checkins ?? [],
+    rituals: data.rituals ?? [],
     markers: data.markers ?? [],
     signals: data.signals ?? [],
     ai: {
       provider: data.ai?.provider ?? DEFAULT_AI.provider,
       model: data.ai?.model ?? DEFAULT_AI.model,
       keys: { ...(data.ai?.keys ?? {}) },
+    },
+    agent: {
+      token: data.agent?.token ?? null,
+      created_at: data.agent?.created_at ?? null,
     },
     updated_at: data.updated_at ?? Date.now(),
   };
@@ -280,6 +411,8 @@ export function totalsForDay(store: GalaxyStore, day: string) {
     recipes: store.recipes.length,
     pantry: store.pantry.length,
     groceryOpen: store.grocery.filter((g) => !g.checked).length,
+    programs: store.programs.length,
+    rituals: store.rituals.length,
   };
 }
 

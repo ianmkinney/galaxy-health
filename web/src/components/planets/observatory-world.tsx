@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlanetHabitat } from "@/components/planets/planet-habitat";
+import { PlanetCharts } from "@/components/charts/planet-charts";
 import { AiDock } from "@/components/ai-dock";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
@@ -10,13 +11,14 @@ import { uid, type Signal } from "@/lib/galaxy-types";
 import { todayKey } from "@/lib/utils";
 
 const TABS = [
+  { id: "charts", label: "Charts" },
   { id: "assays", label: "Assays" },
   { id: "interpret", label: "AI interpret" },
 ];
 
 export function ObservatoryWorld() {
   const { store, update, planetName, saving } = useGalaxy();
-  const [tab, setTab] = useState("assays");
+  const [tab, setTab] = useState("charts");
   const [form, setForm] = useState({
     marker: "",
     value: "",
@@ -77,6 +79,7 @@ export function ObservatoryWorld() {
       activeTab={tab}
       onTab={setTab}
     >
+      {tab === "charts" ? <PlanetCharts store={store} planet="observatory" /> : null}
       {tab === "assays" ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <GlassPanel title="File assay" accent="#A98BFF" index={0}>

@@ -7,14 +7,17 @@ import { PlanetCanvas } from "@/components/three/planet-canvas";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AiDock } from "@/components/ai-dock";
+import { IngestPanel } from "@/components/ingest-panel";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { PLANET_META, type PlanetId } from "@/lib/galaxy-types";
+import { civilizationScore } from "@/lib/chart-series";
 import { round } from "@/lib/utils";
 
 export function BridgeConsole({ userName }: { userName?: string | null }) {
   const { store, loading, error, totals, inFlight, planetName, saving } = useGalaxy();
   const net = round(totals.galley.calories - totals.atlas.burn);
   const enabled = store.planets.filter((p) => p.enabled);
+  const civ = civilizationScore(store);
 
   if (loading) {
     return (
@@ -78,6 +81,25 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
         ) : null}
 
         <GlassPanel title="Vitals — today" accent="#4CE0FF" index={0}>
+          <div className="mb-4">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-white/40">
+                  Civilization vitality
+                </div>
+                <div className="text-3xl font-black text-cyan-200">{civ}</div>
+              </div>
+              <div className="text-right text-[11px] text-white/40">
+                Grows as habits land across planets
+              </div>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 transition-all"
+                style={{ width: `${civ}%` }}
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Fuel in" value={round(totals.galley.calories)} unit="kcal" tone="#FF8A3D" />
             <Stat label="Burned" value={round(totals.atlas.burn)} unit="kcal" tone="#FF4D6D" />
@@ -167,7 +189,11 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
           </GlassPanel>
         ) : null}
 
-        <div className={inFlight.length > 0 ? "" : "lg:col-span-2"}>
+        <div className="lg:col-span-2">
+          <IngestPanel />
+        </div>
+
+        <div className="lg:col-span-2">
           <AiDock
             accent="#4CE0FF"
             title="Bridge synthesis"

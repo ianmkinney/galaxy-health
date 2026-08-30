@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { PlanetHabitat } from "@/components/planets/planet-habitat";
+import { PlanetCharts } from "@/components/charts/planet-charts";
 import { AiDock } from "@/components/ai-dock";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
@@ -11,13 +12,14 @@ import { uid, type Signal } from "@/lib/galaxy-types";
 import { round, todayKey } from "@/lib/utils";
 
 const TABS = [
+  { id: "charts", label: "Charts" },
   { id: "checkin", label: "Check-in" },
   { id: "coach", label: "Recovery AI" },
 ];
 
 export function LumenWorld() {
   const { store, update, planetName, totals, saving } = useGalaxy();
-  const [tab, setTab] = useState("checkin");
+  const [tab, setTab] = useState("charts");
   const [form, setForm] = useState({ mood: "3", focus: "3", sleep: "7", note: "" });
   const day = todayKey();
   const rows = store.checkins.filter((c) => c.logged_on === day);
@@ -60,6 +62,7 @@ export function LumenWorld() {
       activeTab={tab}
       onTab={setTab}
     >
+      {tab === "charts" ? <PlanetCharts store={store} planet="lumen" /> : null}
       {tab === "checkin" ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <GlassPanel title="Clarity field" accent="#4CE0FF" index={0}>

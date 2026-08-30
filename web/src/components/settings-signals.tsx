@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
+import { AgentAccessPanel, TestDataPanel } from "@/components/settings-panels";
 import { useGalaxy } from "@/components/galaxy-provider";
 import {
   DEFAULT_AI,
@@ -29,14 +30,15 @@ export function SettingsPage() {
       </Link>
       <h1 className="mt-3 text-3xl font-black text-white">Settings</h1>
       <p className="mt-1 text-sm text-white/50">
-        Planet names + BYOK keys sync into your private Drive app data.
+        Planet names + BYOK keys + agent uplink sync into your private Drive app data.
       </p>
 
       <div className="mt-6 space-y-4">
         <GlassPanel title="Bring your own key" accent="#4CE0FF" index={0}>
           <p className="text-sm text-white/55">
             Same idea as Food Dude: your Claude / OpenAI / Grok / Gemini key stays in{" "}
-            <em>your</em> Google Drive app folder. Galaxy Health has no key server.
+            <em>your</em> Google Drive app folder. Galaxy Health has no key server. A key also powers
+            intelligent agent routing.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {(["anthropic", "openai", "xai", "gemini"] as const).map((id) => (
@@ -120,6 +122,9 @@ export function SettingsPage() {
           </div>
           {status ? <p className="mt-3 text-sm text-white/50">{status}</p> : null}
         </GlassPanel>
+
+        <AgentAccessPanel />
+        <TestDataPanel />
 
         <GlassPanel title="Planet registry" accent="#4CE0FF" index={1}>
           <div className="space-y-4">

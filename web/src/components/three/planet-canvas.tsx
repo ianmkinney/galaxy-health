@@ -1,137 +1,114 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Stars } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { OrbitControls, Stars } from "@react-three/drei";
+import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
-import type { PlanetId } from "@/lib/galaxy-types";
-import { PLANET_META } from "@/lib/galaxy-types";
+import type { GalaxyStore, PlanetId, Signal } from "@/lib/galaxy-types";
+import { PLANET_META, emptyStore } from "@/lib/galaxy-types";
+import { planetColony } from "@/lib/civilization";
+import { orbitWorldPosition } from "@/lib/neural-geometry";
+import { NeuralCore } from "./neural-core";
+import { OrbitingWorld, PortraitPlanet } from "./orbiting-world";
+import { PlanetSurfaceScene } from "./planet-surface";
 
-function PlanetMesh({
-  color,
-  detail,
+function SignalCraft({
+  signal,
+  store,
 }: {
-  color: string;
-  detail: "galley" | "atlas" | "lumen" | "observatory" | "star";
+  signal: Signal;
+  store: GalaxyStore;
 }) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((_, dt) => {
-    if (!ref.current) return;
-    ref.current.rotation.y += dt * (detail === "observatory" ? 0.15 : 0.35);
-    ref.current.rotation.x += dt * 0.05;
+  const mesh = useRef<THREE.Mesh>(null);
+  const from = PLANET_META[signal.from].orbit;
+  const to = PLANET_META[signal.to].orbit;
+  const enabledFrom = store.planets.find((p) => p.id === signal.from)?.enabled !== false;
+  const enabledTo = store.planets.find((p) => p.id === signal.to)?.enabled !== false;
+
+  useFrame(({ clock }) => {
+    if (!mesh.current || !enabledFrom || !enabledTo) return;
+    const t = clock.getElapsedTime();
+    const u = (t * 0.12 + signal.created_at * 0.00001) % 1;
+    const aFrom = from.phase + (t * Math.PI * 2) / from.periodSec;
+    const aTo = to.phase + (t * Math.PI * 2) / to.periodSec;
+    const A = orbitWorldPosition(from.a, from.eccentricity, aFrom, from.inclination);
+    const B = orbitWorldPosition(to.a, to.eccentricity, aTo, to.inclination);
+    const bow = Math.sin(Math.PI * u);
+    mesh.current.position.set(
+      A.x + (B.x - A.x) * u,
+      A.y + (B.y - A.y) * u + bow * 0.55,
+      A.z + (B.z - A.z) * u - bow * 0.35
+    );
   });
 
-  const mats = useMemo(() => {
-    if (detail === "galley") {
-      return new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.35,
-        metalness: 0.55,
-        emissive: new THREE.Color(color),
-        emissiveIntensity: 0.18,
-      });
-    }
-    if (detail === "atlas") {
-      return new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.7,
-        metalness: 0.2,
-        flatShading: true,
-        emissive: new THREE.Color(color),
-        emissiveIntensity: 0.12,
-      });
-    }
-    if (detail === "lumen") {
-      return new THREE.MeshPhysicalMaterial({
-        color,
-        roughness: 0.1,
-        metalness: 0,
-        transmission: 0.35,
-        thickness: 0.6,
-        transparent: true,
-        opacity: 0.92,
-        emissive: new THREE.Color(color),
-        emissiveIntensity: 0.35,
-      });
-    }
-    if (detail === "observatory") {
-      return new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.25,
-        metalness: 0.7,
-        emissive: new THREE.Color(color),
-        emissiveIntensity: 0.2,
-      });
-    }
-    return new THREE.MeshStandardMaterial({
-      color: "#FFE6A3",
-      emissive: "#FFC857",
-      emissiveIntensity: 1.2,
-    });
-  }, [color, detail]);
+  if (!enabledFrom || !enabledTo) return null;
 
   return (
-    <Float speed={detail === "lumen" ? 2.2 : 1.2} rotationIntensity={0.4} floatIntensity={0.6}>
-      <mesh ref={ref} material={mats} scale={detail === "observatory" ? 1.1 : 1}>
-        {detail === "atlas" ? (
-          <icosahedronGeometry args={[1, 0]} />
-        ) : detail === "observatory" ? (
-          <torusGeometry args={[0.85, 0.28, 16, 48]} />
-        ) : (
-          <sphereGeometry args={[1, detail === "lumen" ? 64 : 48, detail === "lumen" ? 64 : 48]} />
-        )}
-      </mesh>
-      {detail === "observatory" ? (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[1.25, 1.45, 64]} />
-          <meshBasicMaterial color={color} transparent opacity={0.55} side={THREE.DoubleSide} />
-        </mesh>
-      ) : null}
-      {detail === "galley" ? (
-        <mesh scale={1.08}>
-          <sphereGeometry args={[1, 32, 32]} />
-          <meshBasicMaterial color={color} transparent opacity={0.12} />
-        </mesh>
-      ) : null}
-    </Float>
+    <mesh ref={mesh}>
+      <octahedronGeometry args={[0.045, 0]} />
+      <meshBasicMaterial color={PLANET_META[signal.from].accent} />
+    </mesh>
   );
 }
 
-function Scene({ planet }: { planet: PlanetId | "bridge" }) {
-  if (planet === "bridge") {
-    return (
-      <>
-        <color attach="background" args={["#03050B"]} />
-        <ambientLight intensity={0.35} />
-        <pointLight position={[4, 3, 5]} intensity={40} color="#4CE0FF" />
-        <pointLight position={[-4, -2, 2]} intensity={25} color="#A98BFF" />
-        <Stars radius={80} depth={40} count={1200} factor={3} saturation={0} fade speed={0.6} />
-        <PlanetMesh color="#FFE6A3" detail="star" />
-        {(
-          [
-            ["galley", [-2.2, 0.4, 0]],
-            ["atlas", [0.4, 1.5, -0.5]],
-            ["lumen", [2.1, -0.2, 0.3]],
-            ["observatory", [-0.6, -1.6, 0.2]],
-          ] as const
-        ).map(([id, pos]) => (
-          <group key={id} position={pos} scale={0.45}>
-            <PlanetMesh color={PLANET_META[id].accent} detail={id} />
-          </group>
-        ))}
-      </>
-    );
-  }
+function SystemScene({
+  store,
+  names,
+  interactive,
+  onSelect,
+}: {
+  store: GalaxyStore;
+  names?: Partial<Record<PlanetId, string>>;
+  interactive?: boolean;
+  onSelect?: (id: PlanetId) => void;
+}) {
+  const enabled = store.planets.filter((p) => p.enabled);
+  const inFlight = store.signals.filter((s) => !s.seen).slice(0, 10);
 
+  return (
+    <>
+      <color attach="background" args={["#03050B"]} />
+      <fog attach="fog" args={["#03050B", 10, 22]} />
+      <ambientLight intensity={0.22} />
+      <Stars radius={90} depth={50} count={1600} factor={3.2} saturation={0} fade speed={0.45} />
+      <NeuralCore />
+      {enabled.map((planet) => (
+        <OrbitingWorld
+          key={planet.id}
+          id={planet.id}
+          name={names?.[planet.id] ?? planet.name}
+          colony={planetColony(store, planet.id)}
+          interactive={interactive}
+          onSelect={onSelect}
+        />
+      ))}
+      {inFlight.map((signal) => (
+        <SignalCraft key={signal.id} signal={signal} store={store} />
+      ))}
+    </>
+  );
+}
+
+function PortraitScene({ planet, store }: { planet: PlanetId; store: GalaxyStore }) {
   const meta = PLANET_META[planet];
   return (
     <>
       <color attach="background" args={["#05070F"]} />
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.35} />
       <pointLight position={[3, 2, 4]} intensity={55} color={meta.accent} />
-      <pointLight position={[-3, -1, 2]} intensity={20} color={meta.accentSoft} />
-      <Stars radius={60} depth={30} count={800} factor={2.5} saturation={0} fade speed={0.4} />
-      <PlanetMesh color={meta.accent} detail={planet} />
+      <pointLight position={[-3, -1, 2]} intensity={18} color={meta.accentSoft} />
+      <Stars radius={60} depth={30} count={700} factor={2.4} saturation={0} fade speed={0.35} />
+      <PortraitPlanet id={planet} colony={planetColony(store, planet)} />
+    </>
+  );
+}
+
+function SurfaceScene({ planet, store }: { planet: PlanetId; store: GalaxyStore }) {
+  return (
+    <>
+      <color attach="background" args={["#05070F"]} />
+      <Stars radius={50} depth={24} count={500} factor={2} saturation={0} fade speed={0.2} />
+      <PlanetSurfaceScene id={planet} colony={planetColony(store, planet)} />
     </>
   );
 }
@@ -139,14 +116,54 @@ function Scene({ planet }: { planet: PlanetId | "bridge" }) {
 export function PlanetCanvas({
   planet,
   className,
+  store,
+  names,
+  interactive,
+  view,
+  onSelectPlanet,
 }: {
   planet: PlanetId | "bridge";
   className?: string;
+  store?: GalaxyStore;
+  names?: Partial<Record<PlanetId, string>>;
+  interactive?: boolean;
+  view?: "system" | "portrait" | "surface";
+  onSelectPlanet?: (id: PlanetId) => void;
 }) {
+  const data = store ?? emptyStore();
+  const mode = view ?? (planet === "bridge" ? "system" : "portrait");
+  const camera = useMemo(() => {
+    if (mode === "system") return { position: [0, 2.6, 9.2] as [number, number, number], fov: 42 };
+    if (mode === "surface") return { position: [2.4, 2.2, 3.4] as [number, number, number], fov: 46 };
+    return { position: [0, 0.4, 4.2] as [number, number, number], fov: 42 };
+  }, [mode]);
+
   return (
     <div className={className}>
-      <Canvas camera={{ position: [0, 0, 4.2], fov: 42 }} gl={{ antialias: true, alpha: true }}>
-        <Scene planet={planet} />
+      <Canvas camera={camera} gl={{ antialias: true, alpha: true }} dpr={[1, 1.75]}>
+        <Suspense fallback={null}>
+          {mode === "system" ? (
+            <SystemScene store={data} names={names} interactive={interactive} onSelect={onSelectPlanet} />
+          ) : mode === "surface" ? (
+            planet !== "bridge" ? <SurfaceScene planet={planet} store={data} /> : null
+          ) : planet !== "bridge" ? (
+            <PortraitScene planet={planet} store={data} />
+          ) : null}
+        </Suspense>
+        {interactive || mode === "system" ? (
+          <OrbitControls
+            enablePan={false}
+            enableDamping
+            minDistance={mode === "surface" ? 1.6 : 3.2}
+            maxDistance={mode === "surface" ? 8 : 16}
+            maxPolarAngle={Math.PI * 0.72}
+            minPolarAngle={Math.PI * 0.18}
+          />
+        ) : mode === "portrait" ? (
+          <OrbitControls enablePan={false} enableZoom={false} autoRotate autoRotateSpeed={0.6} />
+        ) : (
+          <OrbitControls enablePan={false} minDistance={1.8} maxDistance={7} />
+        )}
       </Canvas>
     </div>
   );
