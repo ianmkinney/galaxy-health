@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useSession } from "next-auth/react";
 import {
   emptyStore,
   normalizeStore,
@@ -23,7 +24,8 @@ type GalaxyContextValue = {
   loading: boolean;
   error: string | null;
   saving: boolean;
-  refresh: () => Promise<void>;
+  refresh: (opts?: { quiet?: boolean }) => Promise<void>;
+  hydrate: (next: GalaxyStore) => void;
   save: (next: GalaxyStore) => Promise<void>;
   update: (mutator: (draft: GalaxyStore) => GalaxyStore) => Promise<void>;
   planetName: (id: PlanetId) => string;
@@ -34,16 +36,21 @@ type GalaxyContextValue = {
 const GalaxyContext = createContext<GalaxyContextValue | null>(null);
 
 export function GalaxyProvider({ children }: { children: ReactNode }) {
+  const { status } = useSession();
   const [store, setStore] = useState<GalaxyStore>(emptyStore);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/data");
+      if (response.status === 401) {
+        setStore(emptyStore());
+        return;
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || "Failed to load data");
@@ -57,9 +64,23 @@ export function GalaxyProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const hydrate = useCallback((next: GalaxyStore) => {
+    setStore(normalizeStore(next));
+    setLoading(false);
+    setError(null);
+  }, []);
+
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (status === "authenticated") {
+      void refresh();
+      return;
+    }
+    if (status === "unauthenticated") {
+      setStore(emptyStore());
+      setLoading(false);
+      setError(null);
+    }
+  }, [status, refresh]);
 
   const save = useCallback(async (next: GalaxyStore) => {
     setSaving(true);
@@ -100,13 +121,14 @@ export function GalaxyProvider({ children }: { children: ReactNode }) {
       error,
       saving,
       refresh,
+      hydrate,
       save,
       update,
       planetName: (id) => store.planets.find((p) => p.id === id)?.name ?? id,
       totals: totalsForDay(store, todayKey()),
       inFlight: store.signals.filter((s) => !s.seen),
     }),
-    [store, loading, error, saving, refresh, save, update]
+    [store, loading, error, saving, refresh, hydrate, save, update]
   );
 
   return (

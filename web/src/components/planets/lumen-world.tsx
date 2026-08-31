@@ -12,11 +12,13 @@ import { Field, Metric } from "@/components/ui/fields";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { uid, type Ritual, type Signal } from "@/lib/galaxy-types";
 import { planetColony } from "@/lib/civilization";
+import { SystemsLedger } from "@/components/planets/systems-ledger";
 import { lumenStats, relativeDay } from "@/lib/planet-ops";
 import { round, todayKey } from "@/lib/utils";
 
 const TABS = [
   { id: "colony", label: "Colony" },
+  { id: "systems", label: "Systems" },
   { id: "charts", label: "Charts" },
   { id: "checkin", label: "Check-in" },
   { id: "rituals", label: "Rituals" },
@@ -69,6 +71,7 @@ export function LumenWorld() {
   return (
     <PlanetHabitat id="lumen" title={planetName("lumen")} tabs={TABS} activeTab={tab} onTab={setTab}>
       {tab === "colony" ? <ColonyPanel colony={colony} /> : null}
+      {tab === "systems" ? <SystemsLedger planetId="lumen" /> : null}
       {tab === "charts" ? <PlanetCharts store={store} planet="lumen" /> : null}
       {tab === "checkin" ? (
         <div className="grid gap-4 lg:grid-cols-2">

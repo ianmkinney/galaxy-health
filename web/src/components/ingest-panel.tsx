@@ -38,7 +38,7 @@ export function IngestPanel({ accent = "#4CE0FF" }: { accent?: string }) {
     <GlassPanel title="Civilization uplink" accent={accent} index={0}>
       <p className="text-sm text-white/55">
         Paste anything — meals, workouts, sleep, labs, groceries. Intelligent routing writes the
-        right planet logs and launches ships.
+        right planet logs, launches ships, and grows the colony.
       </p>
       <textarea
         value={text}

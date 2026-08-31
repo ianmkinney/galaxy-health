@@ -56,6 +56,7 @@ export type IngestOp =
       quantity?: number;
       unit?: string;
       location?: string;
+      expires_on?: string;
     }
   | {
       type: "grocery";
@@ -293,6 +294,7 @@ export function applyIngestOps(
             quantity: Number(op.quantity) || 1,
             unit: op.unit || "",
             location: op.location || "galley",
+            expires_on: op.expires_on,
             created_at: Date.now(),
           },
           source

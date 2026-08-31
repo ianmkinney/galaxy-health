@@ -88,6 +88,10 @@ function isChattyOpenAiModel(id) {
     'codex-mini',
   ];
   if (excluded.some((part) => lower.includes(part))) return false;
+  if (lower.startsWith('ft:')) {
+    const base = lower.slice(3).split(':')[0] || '';
+    return /^(gpt|o[1-9]|chatgpt|grok)/.test(base) || base.includes('chat');
+  }
   return /^(gpt|o[1-9]|chatgpt|grok)/.test(lower) || lower.includes('chat');
 }
 
@@ -203,16 +207,24 @@ export async function generateText(prompt, options = {}) {
 }
 
 async function listAnthropicModels(apiKey) {
-  const json = await fetchJson('https://api.anthropic.com/v1/models', {
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': ANTHROPIC_VERSION,
-    },
-  });
-  return (json.data || []).map((item) => ({
-    id: item.id,
-    name: item.display_name || item.id,
-  }));
+  const out = [];
+  let afterId = '';
+  do {
+    const params = new URLSearchParams({ limit: '100' });
+    if (afterId) params.set('after_id', afterId);
+    const json = await fetchJson(`https://api.anthropic.com/v1/models?${params.toString()}`, {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+      },
+    });
+    const page = json.data || [];
+    for (const item of page) {
+      out.push({ id: item.id, name: item.display_name || item.id });
+    }
+    afterId = json.has_more && page.length ? page[page.length - 1].id : '';
+  } while (afterId);
+  return out;
 }
 
 async function listOpenAiCompatibleModels(baseUrl, apiKey) {

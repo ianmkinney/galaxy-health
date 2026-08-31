@@ -7,11 +7,12 @@ import { motion, spacing, typography } from '../theme';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import Starfield from '../galaxy/Starfield';
 import PlanetBody from '../galaxy/PlanetBody';
+import GalacticSchedule from './GalacticSchedule';
 
 // Every planet surface: the same sky, an oversized planet crest in the header,
 // and a scrolling body. Keeps the shell identity present after warp so a planet
 // never feels like a different app.
-const ScreenShell = ({ theme, accent, title, subtitle, tagline, children, footer }) => {
+const ScreenShell = ({ theme, accent, title, subtitle, tagline, children, footer, planetId }) => {
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -54,7 +55,10 @@ const ScreenShell = ({ theme, accent, title, subtitle, tagline, children, footer
           ) : null}
         </Animated.View>
 
-        <View style={styles.body}>{children}</View>
+        <View style={styles.body}>
+          {planetId ? <GalacticSchedule theme={theme} planetId={planetId} compact index={0} /> : null}
+          {children}
+        </View>
       </ScrollView>
 
       {footer ? (

@@ -11,11 +11,13 @@ import { Field, Metric } from "@/components/ui/fields";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { uid, type Signal } from "@/lib/galaxy-types";
 import { planetColony } from "@/lib/civilization";
+import { SystemsLedger } from "@/components/planets/systems-ledger";
 import { markerFlag, markerHistory, observatoryStats } from "@/lib/planet-ops";
 import { todayKey } from "@/lib/utils";
 
 const TABS = [
   { id: "colony", label: "Colony" },
+  { id: "systems", label: "Systems" },
   { id: "charts", label: "Charts" },
   { id: "assays", label: "Assays" },
   { id: "interpret", label: "AI interpret" },
@@ -106,6 +108,7 @@ export function ObservatoryWorld() {
       onTab={setTab}
     >
       {tab === "colony" ? <ColonyPanel colony={colony} /> : null}
+      {tab === "systems" ? <SystemsLedger planetId="observatory" /> : null}
       {tab === "charts" ? <PlanetCharts store={store} planet="observatory" /> : null}
       {tab === "assays" ? (
         <div className="grid gap-4 lg:grid-cols-2">

@@ -3,10 +3,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { getTheme, planetAccents } from '../theme';
 import BridgeScreen from '../screens/BridgeScreen';
+import FirstMateScreen from '../screens/FirstMateScreen';
 import GalleyScreen from '../screens/GalleyScreen';
 import AtlasScreen from '../screens/AtlasScreen';
 import LumenScreen from '../screens/LumenScreen';
 import ObservatoryScreen from '../screens/ObservatoryScreen';
+import WorldScreen from '../screens/WorldScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SignalLogScreen from '../screens/SignalLogScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -28,10 +30,12 @@ const RootNavigator = () => {
       }}
     >
       <Stack.Screen name="Bridge" component={BridgeScreen} />
+      <Stack.Screen name="FirstMate" component={FirstMateScreen} />
       <Stack.Screen name="Galley" component={GalleyScreen} />
       <Stack.Screen name="Atlas" component={AtlasScreen} />
       <Stack.Screen name="Lumen" component={LumenScreen} />
       <Stack.Screen name="Observatory" component={ObservatoryScreen} />
+      <Stack.Screen name="World" component={WorldScreen} />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}

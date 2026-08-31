@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { loadGalaxyStore, saveGalaxyStore } from "@/lib/drive-store";
+import { galaxyPopulation } from "@/lib/civilization";
 import { countTestRows, seedHealthyTestData, stripTestData } from "@/lib/test-data";
 
 export async function POST(request: Request) {
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     ok: true,
     action,
     testRows: countTestRows(saved),
+    population: galaxyPopulation(saved),
     store: saved,
   });
 }

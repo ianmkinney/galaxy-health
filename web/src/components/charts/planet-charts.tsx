@@ -16,7 +16,7 @@ import {
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { seriesLastDays, shortDay, type DayPoint } from "@/lib/chart-series";
 import type { GalaxyStore, PlanetId } from "@/lib/galaxy-types";
-import { PLANET_META } from "@/lib/galaxy-types";
+import { planetView } from "@/lib/galaxy-types";
 
 function useSeries(store: GalaxyStore) {
   return seriesLastDays(store, 14).map((d) => ({ ...d, label: shortDay(d.day) }));
@@ -30,8 +30,9 @@ export function PlanetCharts({
   planet: PlanetId;
 }) {
   const data = useSeries(store);
-  const accent = PLANET_META[planet].accent;
-  const soft = PLANET_META[planet].accentSoft;
+  const view = planetView(store, planet);
+  const accent = view.accent;
+  const soft = view.accentSoft;
 
   if (planet === "galley") {
     return (
@@ -122,8 +123,33 @@ export function PlanetCharts({
     );
   }
 
+  if (planet === "observatory") {
+    return (
+      <GlassPanel title="Assay charts" accent={accent} index={0}>
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+              <XAxis dataKey="label" stroke="#ffffff55" tick={{ fontSize: 10 }} />
+              <YAxis allowDecimals={false} stroke="#ffffff55" tick={{ fontSize: 10 }} width={28} />
+              <Tooltip
+                contentStyle={{
+                  background: "#0b1020",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 12,
+                }}
+              />
+              <Bar dataKey="markers" name="assays" fill={accent} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <MarkerTrend store={store} accent={accent} />
+      </GlassPanel>
+    );
+  }
+
   return (
-    <GlassPanel title="Assay charts" accent={accent} index={0}>
+    <GlassPanel title="System logs" accent={accent} index={0}>
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
@@ -137,11 +163,10 @@ export function PlanetCharts({
                 borderRadius: 12,
               }}
             />
-            <Bar dataKey="markers" name="assays" fill={accent} radius={[6, 6, 0, 0]} />
+            <Bar dataKey="entries" name="logs" fill={accent} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <MarkerTrend store={store} accent={accent} />
     </GlassPanel>
   );
 }

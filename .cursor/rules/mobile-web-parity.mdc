@@ -1,0 +1,27 @@
+---
+description: Mobile must stay a carbon copy of web — features, layout, and look.
+alwaysApply: true
+---
+
+# Mobile / web carbon copy
+
+Web (`web/`) is the visual and feature source of truth. Mobile (`mobile/`) must match it as closely as Expo/React Native allows. Do not ship a web-only surface (tab, ledger, forge flow, colony HUD, building labels) without the mobile counterpart in the same change.
+
+## Must match
+
+- Same worlds, tabs, and copy (Bridge, First Mate, Galley/Atlas/Lumen/Observatory, custom `/world` → native World screen, Settings, Signals).
+- Same colony model: population = inputs + files + systems×3; new tracking system = new building.
+- Same accents and HUD voice: void `#03050B` / `#05070F`, Galley `#FF8A3D`, Atlas `#FF4D6D`, Lumen `#4CE0FF`, Observatory `#A98BFF`; uppercase tracked labels; glass panels with accent inset.
+- Same user actions: log, files, forge planet from a description, add a system on every planet, talk to First Mate.
+
+## Implementation (not a different product)
+
+- Storage may differ (Drive vs SQLite). Auth may differ (Google vs local). Libraries may differ (Motion/Tailwind vs Reanimated/StyleSheet).
+- The **screen a pilot sees** and **what they can do** must not diverge.
+- When you add or restyle something in `web/`, update `mobile/` in the same turn. When you add something in `mobile/`, mirror `web/`.
+
+## Do not
+
+- Leave mobile on a thinner Galley (or any planet) after web gained depth.
+- Invent a separate mobile visual language (different colors, type, tab set).
+- Nest `<button>` inside `<button>` on web.

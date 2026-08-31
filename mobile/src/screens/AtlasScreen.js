@@ -14,9 +14,15 @@ import StatReadout from '../components/StatReadout';
 import GlowButton from '../components/GlowButton';
 import LogRow from '../components/LogRow';
 import InboxPanel from '../components/InboxPanel';
+import SystemsLedger from '../components/SystemsLedger';
 import { ChipRow, Field, ScaleRow } from '../components/Field';
 
 const accent = planetAccents.atlas;
+
+const TABS = [
+  { value: 'sessions', label: 'Sessions' },
+  { value: 'systems', label: 'Systems' },
+];
 
 const MODALITIES = [
   { value: 'strength', label: 'Strength', met: 6.0 },
@@ -53,6 +59,7 @@ const AtlasScreen = () => {
     intensity: 3,
   });
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState('sessions');
 
   const load = useCallback(async () => {
     const day = todayKey();
@@ -140,17 +147,31 @@ const AtlasScreen = () => {
       subtitle="Strength & movement"
       title={planetName(PLANET_IDS.ATLAS)}
       tagline="Load, minutes, and what it cost you."
+      planetId={PLANET_IDS.ATLAS}
       footer={
-        <GlowButton
-          theme={theme}
-          tone={accent.mid}
-          label={saving ? 'Logging…' : `Log session · ~${round(projectedBurn)} kcal`}
-          icon="barbell"
-          onPress={handleLog}
-          disabled={!canSave}
-        />
+        tab === 'sessions' ? (
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label={saving ? 'Logging…' : `Log session · ~${round(projectedBurn)} kcal`}
+            icon="barbell"
+            onPress={handleLog}
+            disabled={!canSave}
+          />
+        ) : null
       }
     >
+      <ChipRow
+        theme={theme}
+        accent={accent}
+        options={TABS}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'systems' ? (
+        <SystemsLedger theme={theme} accent={accent} planetId={PLANET_IDS.ATLAS} />
+      ) : (
+        <>
       <HoloPanel theme={theme} title="Load — today" accent={accent.mid} index={0}>
         <View style={styles.stats}>
           <StatReadout theme={theme} label="Burned" value={round(totals.burn)} unit="kcal" tone={accent.mid} />
@@ -271,6 +292,8 @@ const AtlasScreen = () => {
         index={4}
         emptyHint={`Log a meal on ${planetName(PLANET_IDS.GALLEY)} to see its manifest arrive.`}
       />
+        </>
+      )}
     </ScreenShell>
   );
 };

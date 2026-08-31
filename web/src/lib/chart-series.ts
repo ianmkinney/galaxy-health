@@ -11,6 +11,7 @@ export type DayPoint = {
   focus: number;
   sleep: number;
   markers: number;
+  entries: number;
 };
 
 function dayList(days: number) {
@@ -45,6 +46,7 @@ export function seriesLastDays(store: GalaxyStore, days = 14): DayPoint[] {
       focus: checkins.length ? focus : 0,
       sleep: checkins.length ? sleep : 0,
       markers: markers.length,
+      entries: (store.entries ?? []).filter((e) => e.logged_on === day).length,
     };
   });
 }
@@ -58,9 +60,14 @@ export function civilizationScore(store: GalaxyStore) {
     if (d.minutes > 0) score += 8;
     if (d.sleep > 0) score += 8;
     if (d.markers > 0) score += 4;
+    if (d.entries > 0) score += 4;
   }
   score += Math.min(20, store.recipes.length * 2);
   score += Math.min(10, store.pantry.length);
+  score += Math.min(8, store.programs.length * 4);
+  score += Math.min(8, store.rituals.length * 2);
+  score += Math.min(12, (store.systems ?? []).length * 3);
+  score += Math.min(8, (store.worlds ?? []).length * 4);
   return Math.min(100, Math.round(score));
 }
 
@@ -68,7 +75,8 @@ export function planetChartTitle(id: PlanetId) {
   if (id === "galley") return "Fuel intake (14d)";
   if (id === "atlas") return "Training load (14d)";
   if (id === "lumen") return "Recovery signals (14d)";
-  return "Assays filed (14d)";
+  if (id === "observatory") return "Assays filed (14d)";
+  return "System logs (14d)";
 }
 
 export function shortDay(day: string) {

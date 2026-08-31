@@ -12,9 +12,11 @@ import { GalleyMealPlan } from "@/components/planets/galley/meal-plan";
 import { GalleyChef } from "@/components/planets/galley/chef";
 import { useGalaxy } from "@/components/galaxy-provider";
 import { planetColony } from "@/lib/civilization";
+import { SystemsLedger } from "@/components/planets/systems-ledger";
 
 const TABS = [
   { id: "colony", label: "Colony" },
+  { id: "systems", label: "Systems" },
   { id: "charts", label: "Charts" },
   { id: "fuel", label: "Fuel log" },
   { id: "recipes", label: "Recipe book" },
@@ -38,12 +40,13 @@ export function GalleyWorld() {
       onTab={setTab}
     >
       {tab === "colony" ? <ColonyPanel colony={colony} /> : null}
+      {tab === "systems" ? <SystemsLedger planetId="galley" /> : null}
       {tab === "charts" ? <PlanetCharts store={store} planet="galley" /> : null}
       {tab === "fuel" ? <GalleyFuelLog /> : null}
       {tab === "recipes" ? <GalleyRecipeBook /> : null}
       {tab === "pantry" ? <GalleyPantry /> : null}
       {tab === "grocery" ? <GalleyGrocery /> : null}
-      {tab === "plan" ? <GalleyMealPlan /> : null}
+      {tab === "plan" ? <GalleyMealPlan key="meal-plan-cells" /> : null}
       {tab === "chef" ? <GalleyChef /> : null}
     </PlanetHabitat>
   );

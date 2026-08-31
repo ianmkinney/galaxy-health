@@ -9,9 +9,14 @@ import {
   planetsRepo,
   settingsRepo,
   signalsRepo,
+  systemsRepo,
   todayKey,
+  unmakeWorld,
+  worldsRepo,
+  eventsRepo,
 } from '../db/repositories';
-import { PLANETS, PLANET_IDS } from '../galaxy/planets';
+import { PLANETS, PLANET_IDS, isCorePlanet } from '../galaxy/planets';
+import { packWorld } from '../galaxy/worldForge';
 import { SIGNAL_ROUTES } from './signalKinds';
 import { EVENTS, emit, on } from './eventBus';
 
@@ -32,6 +37,7 @@ export const GalaxyProvider = ({ children }) => {
   );
   const [settings, setSettings] = useState({});
   const [inFlight, setInFlight] = useState([]);
+  const [events, setEvents] = useState([]);
   const [totals, setTotals] = useState(EMPTY_SNAPSHOT);
 
   const refresh = useCallback(async () => {
@@ -45,10 +51,17 @@ export const GalaxyProvider = ({ children }) => {
       lumenRepo.totalsForDay(day),
       observatoryRepo.count(),
     ]);
+    let eventRows = [];
+    try {
+      eventRows = await eventsRepo.list();
+    } catch {
+      eventRows = [];
+    }
 
     setPlanets(planetRows);
     setSettings(settingRows);
     setInFlight(pending);
+    setEvents(eventRows);
     setTotals({ galley, atlas, lumen, observatory: { markers: markerCount } });
   }, []);
 
@@ -120,6 +133,40 @@ export const GalaxyProvider = ({ children }) => {
     await refresh();
   }, [refresh]);
 
+  const forgePlanet = useCallback(
+    async (draft, description) => {
+      const packed = packWorld(
+        draft,
+        description,
+        planets.map((planet) => planet.id)
+      );
+      await worldsRepo.insert(packed.world);
+      await planetsRepo.insert({ id: packed.id, name: packed.world.name, enabled: true });
+      for (const system of packed.systems) {
+        await systemsRepo.insert(system);
+      }
+      await refresh();
+      return packed.id;
+    },
+    [planets, refresh]
+  );
+
+  const unmakePlanet = useCallback(
+    async (id) => {
+      await unmakeWorld(id);
+      await refresh();
+    },
+    [refresh]
+  );
+
+  const restoreCoreWorlds = useCallback(async () => {
+    await planetsRepo.resetNames();
+    for (const planet of PLANETS) {
+      await planetsRepo.setEnabled(planet.id, true);
+    }
+    await refresh();
+  }, [refresh]);
+
   const updateSetting = useCallback(
     async (key, value) => {
       await settingsRepo.set(key, value);
@@ -132,6 +179,24 @@ export const GalaxyProvider = ({ children }) => {
     await purgeLogs();
     await refresh();
   }, [refresh]);
+
+  const addEvent = useCallback(
+    async (event) => {
+      await eventsRepo.insert(event);
+      emit(EVENTS.DATA_CHANGED, { source: 'schedule' });
+      await refresh();
+    },
+    [refresh]
+  );
+
+  const completeEvent = useCallback(
+    async (id) => {
+      await eventsRepo.setStatus(id, 'done');
+      emit(EVENTS.DATA_CHANGED, { source: 'schedule' });
+      await refresh();
+    },
+    [refresh]
+  );
 
   const planetName = useCallback(
     (id) => planets.find((planet) => planet.id === id)?.name ?? id,
@@ -147,6 +212,7 @@ export const GalaxyProvider = ({ children }) => {
       planetName,
       settings,
       inFlight,
+      events,
       totals,
       refresh,
       sendSignal,
@@ -154,8 +220,14 @@ export const GalaxyProvider = ({ children }) => {
       renamePlanet,
       setPlanetEnabled,
       resetPlanetNames,
+      forgePlanet,
+      unmakePlanet,
+      restoreCoreWorlds,
+      isCorePlanet,
       updateSetting,
       purge,
+      addEvent,
+      completeEvent,
     }),
     [
       ready,
@@ -164,6 +236,7 @@ export const GalaxyProvider = ({ children }) => {
       planetName,
       settings,
       inFlight,
+      events,
       totals,
       refresh,
       sendSignal,
@@ -171,8 +244,13 @@ export const GalaxyProvider = ({ children }) => {
       renamePlanet,
       setPlanetEnabled,
       resetPlanetNames,
+      forgePlanet,
+      unmakePlanet,
+      restoreCoreWorlds,
       updateSetting,
       purge,
+      addEvent,
+      completeEvent,
     ]
   );
 

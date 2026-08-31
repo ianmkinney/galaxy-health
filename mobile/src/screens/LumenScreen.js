@@ -14,9 +14,15 @@ import StatReadout from '../components/StatReadout';
 import GlowButton from '../components/GlowButton';
 import LogRow from '../components/LogRow';
 import InboxPanel from '../components/InboxPanel';
-import { Field, ScaleRow } from '../components/Field';
+import SystemsLedger from '../components/SystemsLedger';
+import { ChipRow, Field, ScaleRow } from '../components/Field';
 
 const accent = planetAccents.lumen;
+
+const TABS = [
+  { value: 'checkin', label: 'Check-in' },
+  { value: 'systems', label: 'Systems' },
+];
 
 const round = (value, digits = 0) => {
   const factor = 10 ** digits;
@@ -39,6 +45,7 @@ const LumenScreen = () => {
   const [totals, setTotals] = useState({ mood: 0, focus: 0, sleep: 0, entries: 0 });
   const [form, setForm] = useState({ mood: 3, focus: 3, sleepHours: '', note: '' });
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState('checkin');
 
   const load = useCallback(async () => {
     const day = todayKey();
@@ -108,17 +115,31 @@ const LumenScreen = () => {
       subtitle="Mind & recovery"
       title={planetName(PLANET_IDS.LUMEN)}
       tagline="Mood, focus, and sleep — the clarity signal."
+      planetId={PLANET_IDS.LUMEN}
       footer={
-        <GlowButton
-          theme={theme}
-          tone={accent.mid}
-          label={saving ? 'Logging…' : `Log check-in · readiness ${round(projected, 1)}/5`}
-          icon="sparkles"
-          onPress={handleLog}
-          disabled={saving}
-        />
+        tab === 'checkin' ? (
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label={saving ? 'Logging…' : `Log check-in · readiness ${round(projected, 1)}/5`}
+            icon="sparkles"
+            onPress={handleLog}
+            disabled={saving}
+          />
+        ) : null
       }
     >
+      <ChipRow
+        theme={theme}
+        accent={accent}
+        options={TABS}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'systems' ? (
+        <SystemsLedger theme={theme} accent={accent} planetId={PLANET_IDS.LUMEN} />
+      ) : (
+        <>
       <HoloPanel theme={theme} title="Clarity — today" accent={accent.mid} index={0}>
         <View style={styles.stats}>
           <StatReadout
@@ -219,6 +240,8 @@ const LumenScreen = () => {
         index={3}
         emptyHint={`Sessions from ${planetName(PLANET_IDS.ATLAS)} and assays from ${planetName(PLANET_IDS.OBSERVATORY)} land here.`}
       />
+        </>
+      )}
     </ScreenShell>
   );
 };

@@ -2,8 +2,24 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { loadGalaxyStore } from "@/lib/drive-store";
 import { generateText } from "@/lib/ai-client";
-import { totalsForDay, type PlanetId } from "@/lib/galaxy-types";
+import { totalsForDay, planetView, type GalacticEventTone, type PlanetId } from "@/lib/galaxy-types";
 import { todayKey } from "@/lib/utils";
+import {
+  heuristicPlanet,
+  heuristicReviseSystem,
+  heuristicSystem,
+  parseForgePlanet,
+  parseForgeSystem,
+  planetForgePrompt,
+  systemForgePrompt,
+  systemRevisePrompt,
+  type ForgeSystemDraft,
+} from "@/lib/world-forge";
+import {
+  eventForgePrompt,
+  heuristicEvent,
+  parseForgeEvent,
+} from "@/lib/galactic-events";
 
 type Body = {
   action:
@@ -11,11 +27,16 @@ type Body = {
     | "galley.pantry_recipe"
     | "galley.import_recipe"
     | "galley.grocery_smart"
+    | "galley.grocery_cost"
     | "atlas.coach"
     | "atlas.program"
     | "lumen.coach"
     | "observatory.interpret"
-    | "bridge.synthesize";
+    | "bridge.synthesize"
+    | "forge.planet"
+    | "forge.system"
+    | "forge.revise"
+    | "forge.event";
   message?: string;
   extra?: Record<string, unknown>;
 };
@@ -28,7 +49,7 @@ function buildContext(store: Awaited<ReturnType<typeof loadGalaxyStore>>, planet
     `Fuel: ${totals.galley.calories} kcal, ${totals.galley.protein}g protein (${totals.galley.entries} meals)`,
     `Load: ${totals.atlas.minutes} min, ${totals.atlas.burn} kcal burned`,
     `Mind: mood ${totals.lumen.entries ? totals.lumen.mood.toFixed(1) : "—"}, focus ${totals.lumen.entries ? totals.lumen.focus.toFixed(1) : "—"}, sleep ${totals.lumen.entries ? totals.lumen.sleep.toFixed(1) : "—"}h`,
-    `Recipes ${store.recipes.length}, pantry ${store.pantry.length}, grocery open ${totals.groceryOpen}, assays ${totals.observatory.markers}`,
+    `Recipes ${store.recipes.length}, pantry ${store.pantry.length}, grocery open ${totals.groceryOpen}, programs ${store.programs.length}, rituals ${store.rituals.length}, assays ${totals.observatory.markers}`,
   ];
   if (planet === "galley" || !planet) {
     lines.push(
@@ -62,6 +83,8 @@ function promptFor(action: Body["action"], message: string, context: string, ext
       return `${guard}\nParse this recipe text into TITLE, INGREDIENTS (one per line), INSTRUCTIONS, optional MACROS.\n\n${message}`;
     case "galley.grocery_smart":
       return `${guard}\nFrom meal plan + pantry gaps, propose a grocery list (one item per line: name | qty | unit).\nContext:\n${context}\n\nFocus: ${message || "this week"}`;
+    case "galley.grocery_cost":
+      return `${guard}\nEstimate grocery cost for UNCHECKED items in this context. Return a short table and a total USD, plus 3 savings tips.\nContext:\n${context}\n\nStore: ${message || "typical US grocery"}`;
     case "atlas.coach":
       return `${guard}\nYou are Atlas training coach. Suggest today's session given fuel and readiness.\nContext:\n${context}\n\nUser: ${message}`;
     case "atlas.program":
@@ -72,6 +95,29 @@ function promptFor(action: Body["action"], message: string, context: string, ext
       return `${guard}\nYou help read lab panels in plain language. Flag out-of-range vs provided refs if present. Urge clinician follow-up. Never diagnose.\nContext:\n${context}\n\nUser notes / panel text:\n${message}\n\nExtra: ${JSON.stringify(extra ?? {})}`;
     case "bridge.synthesize":
       return `${guard}\nCross-planet briefing in 3 short sections: What stands out / One tension / One next action. Under 180 words.\nContext:\n${context}`;
+    case "forge.planet":
+      return planetForgePrompt(message);
+    case "forge.system": {
+      const planetName = String(extra?.planetName ?? "this world");
+      const domain = String(extra?.domain ?? "custom tracking");
+      return systemForgePrompt(planetName, domain, message);
+    }
+    case "forge.revise": {
+      const planetName = String(extra?.planetName ?? "this world");
+      const domain = String(extra?.domain ?? "custom tracking");
+      const current = extra?.system as ForgeSystemDraft | undefined;
+      if (!current) return systemForgePrompt(planetName, domain, message);
+      return systemRevisePrompt(planetName, domain, current, message);
+    }
+    case "forge.event": {
+      const planets = (extra?.planets as { id: string; name: string; domain: string }[]) ?? [];
+      return eventForgePrompt(message, {
+        planets,
+        tone: extra?.tone as GalacticEventTone | "" | undefined,
+        planetId: extra?.planetId ? String(extra.planetId) : null,
+        dueAt: Number(extra?.dueAt) || Date.now(),
+      });
+    }
     default:
       return `${guard}\n${message}`;
   }
@@ -90,6 +136,66 @@ export async function POST(request: Request) {
     }
 
     const store = await loadGalaxyStore(session.accessToken);
+
+    if (body.action === "forge.event") {
+      const description = body.message || "";
+      if (!description.trim()) {
+        return NextResponse.json({ error: "Describe the event." }, { status: 400 });
+      }
+      const planets = store.planets
+        .filter((p) => p.enabled !== false)
+        .map((p) => {
+          const view = planetView(store, p.id);
+          return { id: p.id, name: p.name, domain: view.domain };
+        });
+      const opts = {
+        tone: (body.extra?.tone as GalacticEventTone | "") || "",
+        planetId: body.extra?.planetId ? String(body.extra.planetId) : null,
+        knownPlanets: planets.map((p) => p.id),
+      };
+      try {
+        const prompt = promptFor("forge.event", description, "", {
+          ...body.extra,
+          planets,
+        });
+        const text = await generateText(store.ai, prompt);
+        const forge = parseForgeEvent(text, description, opts);
+        return NextResponse.json({ text, forge, via: "ai" });
+      } catch (error) {
+        const notice = error instanceof Error ? error.message : "AI request failed";
+        const forge = heuristicEvent(description, opts);
+        return NextResponse.json({ text: "", forge, via: "local", notice });
+      }
+    }
+
+    if (body.action === "forge.planet" || body.action === "forge.system" || body.action === "forge.revise") {
+      const description = body.message || "";
+      if (!description.trim()) {
+        return NextResponse.json({ error: "Describe what to track." }, { status: 400 });
+      }
+      const current = body.extra?.system as ForgeSystemDraft | undefined;
+      try {
+        const prompt = promptFor(body.action, description, "", body.extra);
+        const text = await generateText(store.ai, prompt);
+        const forge =
+          body.action === "forge.planet"
+            ? parseForgePlanet(text, description)
+            : body.action === "forge.revise" && current
+              ? parseForgeSystem(text, description, current.fields)
+              : parseForgeSystem(text, description);
+        return NextResponse.json({ text, forge, via: "ai" });
+      } catch (error) {
+        const notice = error instanceof Error ? error.message : "AI request failed";
+        const forge =
+          body.action === "forge.planet"
+            ? heuristicPlanet(description)
+            : body.action === "forge.revise" && current
+              ? heuristicReviseSystem(current, description)
+              : heuristicSystem(description);
+        return NextResponse.json({ text: "", forge, via: "local", notice });
+      }
+    }
+
     const planet =
       body.action.startsWith("galley")
         ? ("galley" as const)

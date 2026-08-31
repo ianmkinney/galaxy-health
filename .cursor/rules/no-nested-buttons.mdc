@@ -1,0 +1,13 @@
+---
+description: Never nest a button inside a button in web UI.
+globs: web/**/*.tsx
+alwaysApply: false
+---
+
+# No nested buttons
+
+Invalid HTML: `<button>` wrapping another `<button>` (Galley meal-plan week grid was the incident).
+
+- Cell / card wrappers that contain controls are `div`s.
+- Assign and remove (or any two actions) are **sibling** buttons, not parent/child.
+- If you need a clickable row plus an inner control, make the row a `div` with `role="button"` only when there is no inner `<button>` — prefer two sibling buttons.

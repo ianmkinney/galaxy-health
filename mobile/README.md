@@ -1,8 +1,8 @@
 # Galaxy Health — Mobile
 
-Expo / React Native app (local-first). Sibling web app lives in `../web`.
+Sibling web app lives in `../web`. **Mobile must stay a carbon copy of web** in features and styling (see root `AGENTS.md` and `.cursor/rules/mobile-web-parity.mdc`). Implement with Reanimated / StyleSheet; do not ship a thinner planet or a different visual language.
 
-A solar-system shell for personal health. You start on **The Bridge** — the cockpit of your ship — looking out at a live orbiting system. Each health domain is a planet. Tap one out the canopy and you warp into it. When one domain hands data to another, you watch a ship carry it across the system.
+A solar-system shell for personal health. You start on **The Bridge** — the cockpit of your ship — looking out at a live orbiting system. **First Mate** is the neural lattice at the centre: tap it to log by chat. Each health domain is a planet.
 
 Local-first, Bring Your Own Key. Same storage principles as Food Dude; totally different free-form 3D shell.
 

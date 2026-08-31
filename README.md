@@ -2,7 +2,7 @@
 
 Canonical repository: [github.com/ianmkinney/galaxy-health](https://github.com/ianmkinney/galaxy-health)
 
-Monorepo with two products that share the solar-system health metaphor:
+Monorepo with two products that share a living health galaxy: worlds orbit First Mate (the neural lattice you talk to). Logs, files, and systems you set up raise cities.
 
 ```
 galaxy_health/
@@ -42,7 +42,8 @@ npm run mobile    # expo start in mobile/
 npm run web       # next dev in web/
 ```
 
-## Design split (intentional)
+## Parity
 
-- **Mobile** keeps Expo Go + native performance: Reanimated / SVG (GL optional). Kokonut/Bklit/Motion cannot run as native dependencies.
-- **Web** uses those libraries for real: Tailwind, Motion, and shadcn registries for Kokonut UI / Bklit charts.
+**Mobile is a carbon copy of web** — same worlds, tabs, colony model, forge/systems, accents, and HUD voice. Storage and libraries differ (SQLite + Reanimated vs Drive + Motion/Tailwind); the pilot-facing product must not.
+
+See `AGENTS.md` and `.cursor/rules/mobile-web-parity.mdc`. When a feature lands on web, land it on mobile in the same change.

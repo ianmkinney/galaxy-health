@@ -2,11 +2,11 @@
 
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import type { PlanetId } from "@/lib/galaxy-types";
-import { PLANET_META } from "@/lib/galaxy-types";
+import type { GalaxyStore, PlanetId } from "@/lib/galaxy-types";
+import { planetView } from "@/lib/galaxy-types";
 import type { PlanetColony } from "@/lib/civilization";
+import { VoxelBuildingField } from "./voxel-building";
 
 function hash(n: number) {
   const x = Math.sin(n * 999) * 43758.5453;
@@ -39,53 +39,23 @@ function Walker({
   );
 }
 
-function BuildingMesh({
-  index,
-  color,
-  scale,
-  name,
-}: {
-  index: number;
-  color: string;
-  scale: number;
-  name: string;
-}) {
-  const a = (index / 8) * Math.PI * 2 + index * 0.4;
-  const r = 0.7 + (index % 3) * 0.35;
-  const h = 0.28 * scale + (index % 4) * 0.08;
-  return (
-    <group position={[Math.cos(a) * r, h / 2, Math.sin(a) * r]}>
-      <mesh>
-        <boxGeometry args={[0.18 * scale, h, 0.18 * scale]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.45}
-          metalness={0.35}
-          roughness={0.4}
-        />
-      </mesh>
-      <Html distanceFactor={6} position={[0, h / 2 + 0.12, 0]} style={{ pointerEvents: "none" }}>
-        <div className="whitespace-nowrap rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/80">
-          {name}
-        </div>
-      </Html>
-    </group>
-  );
-}
-
 export function PlanetSurfaceScene({
   id,
   colony,
+  store,
 }: {
   id: PlanetId;
   colony: PlanetColony;
+  store: GalaxyStore;
 }) {
-  const meta = PLANET_META[id];
-  const walkers = useMemo(
-    () => Array.from({ length: Math.min(14, Math.max(2, Math.ceil(colony.population / 8))) }, (_, i) => i),
-    [colony.population]
-  );
+  const meta = planetView(store, id);
+  const walkers = useMemo(() => {
+    if (colony.citizens.length === 0) return [];
+    return Array.from(
+      { length: Math.min(14, Math.max(2, Math.ceil(colony.population / 8))) },
+      (_, i) => i
+    );
+  }, [colony.citizens.length, colony.population]);
 
   return (
     <group>
@@ -101,12 +71,11 @@ export function PlanetSurfaceScene({
         <sphereGeometry args={[0.22, 24, 16]} />
         <meshStandardMaterial color={meta.accent} emissive={meta.accent} emissiveIntensity={0.6} />
       </mesh>
-      {colony.buildings.map((b, i) => (
-        <BuildingMesh key={b.id} index={i} color={meta.accent} scale={b.scale} name={b.name} />
-      ))}
+      <VoxelBuildingField buildings={colony.buildings} color={meta.accent} mode="surface" />
       {walkers.map((i) => (
         <Walker key={i} color={meta.accentSoft} seed={i * 1.7 + 0.2} />
       ))}
+      <hemisphereLight args={["#c8e4ff", "#1a1020", 0.45]} />
       <pointLight position={[2, 3, 2]} intensity={40} color={meta.accent} />
       <pointLight position={[-2, 1.4, -1]} intensity={18} color={meta.accentSoft} />
       <ambientLight intensity={0.35} />

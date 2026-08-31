@@ -51,27 +51,36 @@ Registries are declared in `components.json`.
 
 Any agent (Cursor, Claude, ChatGPT Actions, curl) can log free-form updates. Galaxy Health routes the text into meals, workouts, check-ins, markers, pantry, grocery, and meal plans, then fires inter-planet signals.
 
-1. Sign in → **Settings → Generate agent token** (copy once).
-2. Call ingest:
+1. Sign in → **Settings → Generate agent token**
+2. Tap **Copy** on **Paste this to your agent**
+3. Paste that block into your agent chat, then talk normally (“ran 30 min and ate eggs”)
 
-```bash
-# GET (simple for agents / bookmarks)
-curl "http://localhost:3000/api/ingest?token=TOKEN&text=Ate%20eggs%20420kcal%20and%20ran%2030%20min"
+The copied instructions already include the token, ingest URL, and rules. Treat the token like a password — revoke anytime in Settings.
 
-# POST
-curl -X POST http://localhost:3000/api/ingest \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Leg day 45 min + chicken bowl 600 kcal, slept 7.5h"}'
-```
+## First Mate
 
-Signed-in browser sessions can also use the **Civilization uplink** on the Bridge (no token). With a BYOK key saved, routing uses AI JSON plans; otherwise heuristics apply.
+Click the lattice at the centre of the Bridge to chat or talk. First Mate routes free-form logs onto the right worlds and answers. SMS uses Twilio and requires A2P consent:
 
-Treat the agent token like a password — it can write your Drive app data. Revoke anytime in Settings.
+1. Public opt-in form (checkbox never pre-checked): `/sms`
+2. Privacy Policy (includes non-sharing of mobile numbers): `/privacy`
+3. Terms of Service: `/terms`
+4. Keyword screenshots for carriers: `/sms/flow`
+
+Set `TWILIO_*` env vars, generate an agent token, paste the **Twilio SMS webhook** URL into Twilio. End users opt in on `/sms` or by texting **START**, then **YES**. **STOP** / **HELP** are handled on the webhook. Health-log replies only go out after opt-in.
+
+## Google Drive storage
+
+Settings → **View in Google Drive** shows a live count of files in this app’s private Drive app folder, plus **Open Google Drive**. App-folder files are hidden from My Drive; the Settings panel is the inventory.
 
 ## Test civilization
 
-Settings → **Populate healthy test data** seeds ~7 days of healthy logs across all planets (tagged `source: test`). **Remove test data** strips those rows without touching real logs.
+Settings → **Populate healthy test data** seeds ~7 days of healthy logs across all planets (tagged `source: test`), plus recipes, pantry, a program, and a ritual so colonies look inhabited. **Remove test data** strips those rows without touching real logs.
+
+Galley on web is a full household loop (recipe book with search/cook, pantry expiry, grocery generated from the week plan without AI, aisle grouping, week grid). Atlas/Lumen/Observatory follow the same depth: ledgers, filters, saved systems that raise buildings.
+
+## Forge a world
+
+On the Bridge, describe what you want to track. AI (or a local fallback if no API key is saved) stands up a custom planet beyond Observatory, with tracking systems that each raise a voxel building. Every core world also has a **Systems** tab to add more.
 
 ## vs Mobile
 

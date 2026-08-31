@@ -1,36 +1,11 @@
-import React, { memo, useEffect } from 'react';
+import React, { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
 
 // Canopy chrome drawn over the viewport: hull above, angled pillars at the
-// sides, a vignette, and a reflection that crawls across the glass. Purely
-// decorative and never interactive — `pointerEvents` stays off so planets
-// underneath stay tappable.
-const CockpitFrame = memo(({ width, height, animate = true, accent = '#6FDBFF' }) => {
-  const sheen = useSharedValue(0);
-
-  useEffect(() => {
-    if (!animate) return undefined;
-    sheen.value = withRepeat(
-      withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
-    return undefined;
-  }, [animate, sheen]);
-
-  const sheenStyle = useAnimatedStyle(() => ({
-    opacity: 0.05 + sheen.value * 0.09,
-    transform: [{ translateX: -width * 0.6 + sheen.value * width * 1.2 }, { rotateZ: '14deg' }],
-  }));
-
+// sides, a vignette, and a boresight reticle. Purely decorative and never
+// interactive — `pointerEvents` stays off so planets underneath stay tappable.
+const CockpitFrame = memo(({ width, height, accent = '#6FDBFF' }) => {
   const canopyDrop = height * 0.11;
 
   return (
@@ -95,21 +70,8 @@ const CockpitFrame = memo(({ width, height, animate = true, accent = '#6FDBFF' }
           strokeWidth={1}
         />
       </Svg>
-
-      {animate ? (
-        <Animated.View style={[styles.sheen, { height: height * 1.4 }, sheenStyle]} />
-      ) : null}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  sheen: {
-    position: 'absolute',
-    top: -40,
-    width: 90,
-    backgroundColor: '#BFF4FF',
-  },
 });
 
 CockpitFrame.displayName = 'CockpitFrame';

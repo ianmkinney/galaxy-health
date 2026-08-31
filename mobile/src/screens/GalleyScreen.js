@@ -14,9 +14,19 @@ import StatReadout from '../components/StatReadout';
 import GlowButton from '../components/GlowButton';
 import LogRow from '../components/LogRow';
 import InboxPanel from '../components/InboxPanel';
+import SystemsLedger from '../components/SystemsLedger';
 import { ChipRow, Field } from '../components/Field';
 
 const accent = planetAccents.galley;
+
+const TABS = [
+  { value: 'fuel', label: 'Fuel' },
+  { value: 'systems', label: 'Systems' },
+  { value: 'recipes', label: 'Recipes' },
+  { value: 'pantry', label: 'Pantry' },
+  { value: 'grocery', label: 'Grocery' },
+  { value: 'plan', label: 'Plan' },
+];
 
 const SLOTS = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -45,16 +55,33 @@ const GalleyScreen = () => {
     carbs: '',
     fat: '',
   });
+  const [tab, setTab] = useState('fuel');
+  const [recipes, setRecipes] = useState([]);
+  const [pantry, setPantry] = useState([]);
+  const [grocery, setGrocery] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [recipeTitle, setRecipeTitle] = useState('');
+  const [pantryName, setPantryName] = useState('');
+  const [groceryName, setGroceryName] = useState('');
+  const [planTitle, setPlanTitle] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     const day = todayKey();
-    const [rows, sums] = await Promise.all([
+    const [rows, sums, recs, hold, list, week] = await Promise.all([
       galleyRepo.listForDay(day),
       galleyRepo.totalsForDay(day),
+      galleyRepo.listRecipes().catch(() => []),
+      galleyRepo.listPantry().catch(() => []),
+      galleyRepo.listGrocery().catch(() => []),
+      galleyRepo.listPlans(day).catch(() => []),
     ]);
     setMeals(rows);
     setTotals(sums);
+    setRecipes(recs);
+    setPantry(hold);
+    setGrocery(list);
+    setPlans(week);
   }, []);
 
   useEffect(() => {
@@ -119,18 +146,31 @@ const GalleyScreen = () => {
       accent={accent}
       subtitle="Food & fuel"
       title={planetName(PLANET_IDS.GALLEY)}
-      tagline="Everything the crew eats, logged as fuel."
+      tagline="Logs, files, and systems raise this world. Same household loop as Food Dude."
+      planetId={PLANET_IDS.GALLEY}
       footer={
-        <GlowButton
-          theme={theme}
-          tone={accent.mid}
-          label={saving ? 'Logging…' : 'Log fuel & transmit'}
-          icon="flame"
-          onPress={handleLog}
-          disabled={!canSave}
-        />
+        tab === 'fuel' ? (
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label={saving ? 'Logging…' : 'Log fuel & transmit'}
+            icon="flame"
+            onPress={handleLog}
+            disabled={!canSave}
+          />
+        ) : null
       }
     >
+      <ChipRow
+        theme={theme}
+        accent={accent}
+        label="Hold"
+        options={TABS}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'fuel' ? (
+        <>
       <HoloPanel theme={theme} title="Fuel balance — today" accent={accent.mid} index={0}>
         <View style={styles.stats}>
           <StatReadout theme={theme} label="In" value={round(totals.calories)} unit="kcal" tone={accent.mid} />
@@ -238,15 +278,124 @@ const GalleyScreen = () => {
           ))
         )}
       </HoloPanel>
+        </>
+      ) : null}
 
-      <InboxPanel
-        theme={theme}
-        accent={accent}
-        signals={signals}
-        planetName={planetName}
-        index={3}
-        emptyHint={`Log a session on ${planetName(PLANET_IDS.ATLAS)} and its burn report lands here.`}
-      />
+      {tab === 'systems' ? (
+        <SystemsLedger theme={theme} accent={accent} planetId={PLANET_IDS.GALLEY} />
+      ) : null}
+
+      {tab === 'recipes' ? (
+        <HoloPanel theme={theme} title="Recipe book" meta={`${recipes.length}`} accent={accent.mid} index={0}>
+          <Field
+            theme={theme}
+            label="Title"
+            value={recipeTitle}
+            onChangeText={setRecipeTitle}
+            placeholder="Lentil soup"
+          />
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label="Save recipe"
+            onPress={async () => {
+              if (!recipeTitle.trim()) return;
+              await galleyRepo.addRecipe({ title: recipeTitle.trim() });
+              setRecipeTitle('');
+              await load();
+            }}
+          />
+          {recipes.map((row, index) => (
+            <LogRow key={row.id} theme={theme} accent={accent} index={index} title={row.title} meta={row.tags || 'file'} />
+          ))}
+        </HoloPanel>
+      ) : null}
+
+      {tab === 'pantry' ? (
+        <HoloPanel theme={theme} title="Pantry" meta={`${pantry.length}`} accent={accent.mid} index={0}>
+          <Field theme={theme} label="Item" value={pantryName} onChangeText={setPantryName} placeholder="Eggs" />
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label="Stow"
+            onPress={async () => {
+              if (!pantryName.trim()) return;
+              await galleyRepo.addPantry({ name: pantryName.trim(), quantity: 1 });
+              setPantryName('');
+              await load();
+            }}
+          />
+          {pantry.map((row, index) => (
+            <LogRow
+              key={row.id}
+              theme={theme}
+              accent={accent}
+              index={index}
+              title={row.name}
+              meta={`${row.quantity}${row.unit ? ` ${row.unit}` : ''}`}
+            />
+          ))}
+        </HoloPanel>
+      ) : null}
+
+      {tab === 'grocery' ? (
+        <HoloPanel theme={theme} title="Grocery" meta={`${grocery.filter((g) => !g.checked).length} open`} accent={accent.mid} index={0}>
+          <Field theme={theme} label="Need" value={groceryName} onChangeText={setGroceryName} placeholder="Blueberries" />
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label="Add"
+            onPress={async () => {
+              if (!groceryName.trim()) return;
+              await galleyRepo.addGrocery({ name: groceryName.trim(), quantity: 1 });
+              setGroceryName('');
+              await load();
+            }}
+          />
+          {grocery.map((row, index) => (
+            <LogRow
+              key={row.id}
+              theme={theme}
+              accent={accent}
+              index={index}
+              title={row.name}
+              meta={row.checked ? 'checked' : 'open'}
+              onDelete={() => galleyRepo.toggleGrocery(row.id, !row.checked).then(load)}
+            />
+          ))}
+        </HoloPanel>
+      ) : null}
+
+      {tab === 'plan' ? (
+        <HoloPanel theme={theme} title="Today's sittings" meta={`${plans.length}`} accent={accent.mid} index={0}>
+          <Field theme={theme} label="Title" value={planTitle} onChangeText={setPlanTitle} placeholder="Salmon + greens" />
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label="Add dinner"
+            onPress={async () => {
+              if (!planTitle.trim()) return;
+              await galleyRepo.addPlan({ title: planTitle.trim(), slot: 'dinner' });
+              setPlanTitle('');
+              await load();
+            }}
+          />
+          {plans.map((row, index) => (
+            <LogRow key={row.id} theme={theme} accent={accent} index={index} title={row.title} meta={row.slot} />
+          ))}
+        </HoloPanel>
+      ) : null}
+
+      {tab === 'fuel' ? (
+        <InboxPanel
+          theme={theme}
+          accent={accent}
+          signals={signals}
+          planetName={planetName}
+          index={3}
+          emptyHint={`Log a session on ${planetName(PLANET_IDS.ATLAS)} and its burn report lands here.`}
+        />
+      ) : null}
     </ScreenShell>
   );
 };

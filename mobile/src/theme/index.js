@@ -72,11 +72,30 @@ export const planetAccents = {
   },
 };
 
+export function accentForPlanet(planet) {
+  const known = planetAccents[planet?.id];
+  if (known) return known;
+  const mid = planet?.accent || '#4CE0FF';
+  const ink = planet?.accentSoft || '#D6F7FF';
+  return {
+    core: ink,
+    mid,
+    deep: mid,
+    glow: `${mid}73`,
+    ink,
+  };
+}
+
+export function accentForId(id, planets = []) {
+  if (planetAccents[id]) return planetAccents[id];
+  return accentForPlanet(planets.find((planet) => planet.id === id) || { accent: '#4CE0FF' });
+}
+
 export const starColor = {
-  core: '#FFF7DC',
-  mid: '#FFD98A',
-  deep: '#FF9C3D',
-  glow: 'rgba(255, 205, 130, 0.5)',
+  core: '#BFF4FF',
+  mid: '#7A8CFF',
+  deep: '#4B2E9E',
+  glow: 'rgba(122, 240, 255, 0.45)',
 };
 
 const themes = {
@@ -221,4 +240,4 @@ export const panelStyle = (theme, variant = 'panel') => {
   return base;
 };
 
-export default { getTheme, panelStyle, planetAccents, palette, motion, spacing, radius, typography };
+export default { getTheme, panelStyle, planetAccents, accentForPlanet, accentForId, palette, motion, spacing, radius, typography };

@@ -130,6 +130,146 @@ export const MIGRATIONS = [
         ON observatory_markers(collected_on, created_at DESC);
     `,
   },
+  {
+    version: 6,
+    name: 'galley: household loop — recipes, pantry, grocery, meal plans',
+    sql: `
+      CREATE TABLE IF NOT EXISTS galley_recipes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        ingredients TEXT,
+        instructions TEXT,
+        tags TEXT,
+        calories REAL,
+        protein REAL,
+        cooked_count INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS galley_pantry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        quantity REAL DEFAULT 1,
+        unit TEXT,
+        location TEXT,
+        category TEXT,
+        expires_on TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS galley_grocery (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        quantity REAL DEFAULT 1,
+        unit TEXT,
+        checked INTEGER NOT NULL DEFAULT 0,
+        recipe_name TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS galley_meal_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day TEXT NOT NULL,
+        slot TEXT NOT NULL,
+        title TEXT NOT NULL,
+        recipe_id INTEGER,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_galley_meal_plans_day
+        ON galley_meal_plans(day, slot);
+    `,
+  },
+  {
+    version: 7,
+    name: 'custom worlds + tracking systems',
+    sql: `
+      CREATE TABLE IF NOT EXISTS custom_worlds (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        domain TEXT,
+        accent TEXT,
+        accent_soft TEXT,
+        vibe TEXT,
+        cadence TEXT,
+        orbit_json TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        source TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS tracking_systems (
+        id TEXT PRIMARY KEY NOT NULL,
+        planet_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        building_kind TEXT NOT NULL,
+        building_name TEXT,
+        fields_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        source TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS tracking_entries (
+        id TEXT PRIMARY KEY NOT NULL,
+        system_id TEXT NOT NULL,
+        planet_id TEXT NOT NULL,
+        values_json TEXT NOT NULL,
+        notes TEXT,
+        logged_on TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        source TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tracking_systems_planet
+        ON tracking_systems(planet_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_tracking_entries_planet
+        ON tracking_entries(planet_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_tracking_entries_system
+        ON tracking_entries(system_id, created_at DESC);
+    `,
+  },
+  {
+    version: 8,
+    name: 'first mate conversation log',
+    sql: `
+      CREATE TABLE IF NOT EXISTS first_mate_messages (
+        id TEXT PRIMARY KEY NOT NULL,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL,
+        channel TEXT NOT NULL,
+        planets_json TEXT,
+        applied INTEGER,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_first_mate_created
+        ON first_mate_messages(created_at ASC);
+    `,
+  },
+  {
+    version: 9,
+    name: 'galactic schedule — events as crafts in the starfield',
+    sql: `
+      CREATE TABLE IF NOT EXISTS galactic_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        briefing TEXT,
+        tone TEXT NOT NULL,
+        craft TEXT NOT NULL,
+        planet_id TEXT,
+        due_at INTEGER NOT NULL,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'upcoming',
+        created_at INTEGER NOT NULL,
+        source TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_galactic_events_due
+        ON galactic_events(status, due_at ASC);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce(

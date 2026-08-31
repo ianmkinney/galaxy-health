@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Galaxy Health",
   description:
-    "Solar-system health shell. Sign in with Google — data lives in your Drive.",
+    "A living health galaxy. Worlds orbit First Mate — populate them with the information that makes you your healthiest self.",
 };
 
 export default function RootLayout({

@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { google } from "googleapis";
 import { emptyStore, normalizeStore, type GalaxyStore } from "./galaxy-types";
 
-const STORE_FILENAME = "galaxyhealth-store.json";
+export const STORE_FILENAME = "galaxyhealth-store.json";
 
 function driveClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -21,8 +21,59 @@ async function findStoreFileId(accessToken: string) {
   return listed.data.files?.[0]?.id ?? null;
 }
 
-export async function loadGalaxyStore(accessToken: string): Promise<GalaxyStore> {
+export type DriveAppFile = {
+  id: string;
+  name: string;
+  mimeType: string | null;
+  size: number | null;
+  modifiedTime: string | null;
+  webViewLink: string | null;
+};
+
+export async function listAppDataFiles(accessToken: string): Promise<{
+  count: number;
+  files: DriveAppFile[];
+  driveHomeUrl: string;
+  appDataNote: string;
+}> {
   const drive = driveClient(accessToken);
+  const files: DriveAppFile[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const listed = await drive.files.list({
+      spaces: "appDataFolder",
+      q: "trashed = false",
+      fields: "nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink)",
+      pageSize: 100,
+      pageToken,
+    });
+    for (const f of listed.data.files || []) {
+      if (!f.id || !f.name) continue;
+      files.push({
+        id: f.id,
+        name: f.name,
+        mimeType: f.mimeType ?? null,
+        size: f.size != null ? Number(f.size) : null,
+        modifiedTime: f.modifiedTime ?? null,
+        webViewLink: f.webViewLink ?? null,
+      });
+    }
+    pageToken = listed.data.nextPageToken || undefined;
+  } while (pageToken);
+
+  files.sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    count: files.length,
+    files,
+    driveHomeUrl: "https://drive.google.com/drive/my-drive",
+    appDataNote:
+      "Galaxy Health stores data in Google Drive’s private app folder for this app. That folder is hidden from My Drive, but the count below is live from your account.",
+  };
+}
+
+export async function loadGalaxyStore(accessToken: string): Promise<GalaxyStore> {
   const fileId = await findStoreFileId(accessToken);
 
   if (!fileId) {
@@ -31,6 +82,7 @@ export async function loadGalaxyStore(accessToken: string): Promise<GalaxyStore>
     return blank;
   }
 
+  const drive = driveClient(accessToken);
   const response = await drive.files.get(
     { fileId, alt: "media" },
     { responseType: "text" }
