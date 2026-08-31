@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { loadGalaxyStore } from "@/lib/drive-store";
 import { generateText } from "@/lib/ai-client";
-import { totalsForDay, planetView, type GalacticEventTone, type PlanetId } from "@/lib/galaxy-types";
+import {
+  totalsForDay,
+  planetView,
+  isGalacticTone,
+  type GalacticEventTone,
+  type PlanetId,
+} from "@/lib/galaxy-types";
 import { todayKey } from "@/lib/utils";
 import {
   heuristicPlanet,
@@ -148,8 +154,13 @@ export async function POST(request: Request) {
           const view = planetView(store, p.id);
           return { id: p.id, name: p.name, domain: view.domain };
         });
-      const opts = {
-        tone: (body.extra?.tone as GalacticEventTone | "") || "",
+      const rawTone = String(body.extra?.tone ?? "");
+      const opts: {
+        tone: GalacticEventTone | "";
+        planetId: string | null;
+        knownPlanets: string[];
+      } = {
+        tone: isGalacticTone(rawTone) ? rawTone : "",
         planetId: body.extra?.planetId ? String(body.extra.planetId) : null,
         knownPlanets: planets.map((p) => p.id),
       };
