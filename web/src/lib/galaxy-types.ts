@@ -194,6 +194,47 @@ export type Signal = {
   source?: DataSource;
 };
 
+/** Graphic that AI (or a local heuristic) parks in the galaxy for a scheduled event. */
+export type GalacticCraftKind = "warship" | "armada" | "envoy" | "monster" | "astronaut";
+
+export const GALACTIC_CRAFTS: GalacticCraftKind[] = [
+  "warship",
+  "armada",
+  "envoy",
+  "monster",
+  "astronaut",
+];
+
+export function isGalacticCraft(value: string): value is GalacticCraftKind {
+  return (GALACTIC_CRAFTS as string[]).includes(value);
+}
+
+export type GalacticEventTone = "deadline" | "fun" | "exciting";
+
+export const GALACTIC_TONES: GalacticEventTone[] = ["deadline", "fun", "exciting"];
+
+export function isGalacticTone(value: string): value is GalacticEventTone {
+  return (GALACTIC_TONES as string[]).includes(value);
+}
+
+export type GalacticEventStatus = "upcoming" | "done" | "missed";
+
+export type GalacticEvent = {
+  id: string;
+  title: string;
+  /** Galactic flavor the pilot reads on the schedule and on hover in space. */
+  briefing: string;
+  tone: GalacticEventTone;
+  craft: GalacticCraftKind;
+  /** Tagged world, or null for a deep-space contact. */
+  planet_id: PlanetId | null;
+  due_at: number;
+  notes?: string;
+  status: GalacticEventStatus;
+  created_at: number;
+  source?: DataSource;
+};
+
 export type AiSettings = {
   provider: "anthropic" | "openai" | "xai" | "gemini";
   /** User BYOK — stored only in their private Drive appData */
@@ -205,6 +246,34 @@ export type AgentSettings = {
   /** Bearer token for /api/ingest — treat like a password */
   token: string | null;
   created_at: number | null;
+};
+
+export type FirstMateChannel = "web" | "mobile" | "sms";
+
+export type FirstMateMood = "idle" | "listening" | "thinking" | "talking";
+
+export type FirstMateMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  channel: FirstMateChannel;
+  created_at: number;
+  planetsTouched?: PlanetId[];
+  applied?: number;
+};
+
+export type SmsConsentState = "none" | "pending" | "opted_in" | "opted_out";
+
+export type SmsConsentSource = "web" | "sms";
+
+export type FirstMateSettings = {
+  /** Linked personal number in E.164, used to authorize inbound SMS. */
+  phone: string | null;
+  messages: FirstMateMessage[];
+  /** A2P 10DLC: not opted in until the user confirms (web checkbox + YES, or START + YES). */
+  smsConsent: SmsConsentState;
+  smsConsentAt: number | null;
+  smsConsentSource: SmsConsentSource | null;
 };
 
 export type TrackingFieldKind = "number" | "scale" | "text" | "duration" | "boolean";
@@ -257,7 +326,7 @@ export type CustomWorld = {
 };
 
 export type GalaxyStore = {
-  version: 4;
+  version: 5;
   planets: PlanetRecord[];
   worlds: CustomWorld[];
   systems: TrackingSystem[];
@@ -273,8 +342,10 @@ export type GalaxyStore = {
   rituals: Ritual[];
   markers: Marker[];
   signals: Signal[];
+  events: GalacticEvent[];
   ai: AiSettings;
   agent: AgentSettings;
+  firstMate: FirstMateSettings;
   updated_at: number;
 };
 
@@ -460,12 +531,12 @@ export function allPlanetViews(store: GalaxyStore): PlanetView[] {
   return store.planets.map((p) => planetView(store, p.id));
 }
 
-/** The centre is you — a pulsing neural lattice, never a sun. */
+/** The centre you talk to — a neural lattice, never a sun. */
 export const CORE_META = {
   id: "core",
-  name: "The Core",
+  name: "First Mate",
   domain: "You",
-  vibe: "A living equation of points and firing axons. Every log, file, and system you set up pulses through it.",
+  vibe: "The neural mass worlds orbit. Click, talk, or text — First Mate logs the change and answers.",
 };
 
 export const DEFAULT_AI: AiSettings = {
@@ -479,9 +550,27 @@ export const DEFAULT_AGENT: AgentSettings = {
   created_at: null,
 };
 
+export const DEFAULT_FIRST_MATE: FirstMateSettings = {
+  phone: null,
+  messages: [],
+  smsConsent: "none",
+  smsConsentAt: null,
+  smsConsentSource: null,
+};
+
+function asSmsConsent(value: unknown): SmsConsentState {
+  if (value === "pending" || value === "opted_in" || value === "opted_out") return value;
+  return "none";
+}
+
+function asSmsConsentSource(value: unknown): SmsConsentSource | null {
+  if (value === "web" || value === "sms") return value;
+  return null;
+}
+
 export function emptyStore(): GalaxyStore {
   return {
-    version: 4,
+    version: 5,
     planets: DEFAULT_PLANETS.map((p) => ({ ...p })),
     worlds: [],
     systems: [],
@@ -497,8 +586,10 @@ export function emptyStore(): GalaxyStore {
     rituals: [],
     markers: [],
     signals: [],
+    events: [],
     ai: { ...DEFAULT_AI, keys: {} },
     agent: { ...DEFAULT_AGENT },
+    firstMate: { ...DEFAULT_FIRST_MATE, messages: [] },
     updated_at: Date.now(),
   };
 }
@@ -525,7 +616,7 @@ function mergePlanets(data: Partial<GalaxyStore>): PlanetRecord[] {
   return [...cores, ...extras];
 }
 
-/** Migrate Drive blobs (and partial objects) up to v4. */
+/** Migrate Drive blobs (and partial objects) up to v5. */
 export function normalizeStore(raw: unknown): GalaxyStore {
   const base = emptyStore();
   if (!raw || typeof raw !== "object") return base;
@@ -534,7 +625,7 @@ export function normalizeStore(raw: unknown): GalaxyStore {
   return {
     ...base,
     ...data,
-    version: 4,
+    version: 5,
     planets: mergePlanets(data),
     worlds: data.worlds ?? [],
     systems: data.systems ?? [],
@@ -550,6 +641,7 @@ export function normalizeStore(raw: unknown): GalaxyStore {
     rituals: data.rituals ?? [],
     markers: data.markers ?? [],
     signals: data.signals ?? [],
+    events: Array.isArray(data.events) ? data.events : [],
     ai: {
       provider: data.ai?.provider ?? DEFAULT_AI.provider,
       model: data.ai?.model ?? DEFAULT_AI.model,
@@ -558,6 +650,14 @@ export function normalizeStore(raw: unknown): GalaxyStore {
     agent: {
       token: data.agent?.token ?? null,
       created_at: data.agent?.created_at ?? null,
+    },
+    firstMate: {
+      phone: data.firstMate?.phone ?? null,
+      messages: Array.isArray(data.firstMate?.messages) ? data.firstMate.messages : [],
+      smsConsent: asSmsConsent(data.firstMate?.smsConsent),
+      smsConsentAt:
+        typeof data.firstMate?.smsConsentAt === "number" ? data.firstMate.smsConsentAt : null,
+      smsConsentSource: asSmsConsentSource(data.firstMate?.smsConsentSource),
     },
     updated_at: data.updated_at ?? Date.now(),
   };

@@ -57,6 +57,17 @@ Any agent (Cursor, Claude, ChatGPT Actions, curl) can log free-form updates. Gal
 
 The copied instructions already include the token, ingest URL, and rules. Treat the token like a password — revoke anytime in Settings.
 
+## First Mate
+
+Click the lattice at the centre of the Bridge to chat or talk. First Mate routes free-form logs onto the right worlds and answers. SMS uses Twilio and requires A2P consent:
+
+1. Public opt-in form (checkbox never pre-checked): `/sms`
+2. Privacy Policy (includes non-sharing of mobile numbers): `/privacy`
+3. Terms of Service: `/terms`
+4. Keyword screenshots for carriers: `/sms/flow`
+
+Set `TWILIO_*` env vars, generate an agent token, paste the **Twilio SMS webhook** URL into Twilio. End users opt in on `/sms` or by texting **START**, then **YES**. **STOP** / **HELP** are handled on the webhook. Health-log replies only go out after opt-in.
+
 ## Google Drive storage
 
 Settings → **View in Google Drive** shows a live count of files in this app’s private Drive app folder, plus **Open Google Drive**. App-folder files are hidden from My Drive; the Settings panel is the inventory.

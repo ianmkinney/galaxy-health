@@ -1,17 +1,25 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
 import { buildNeuralGraph } from "@/lib/neural-geometry";
+import type { FirstMateMood } from "@/lib/galaxy-types";
 
 const CORE_CYAN = "#7AF0FF";
 const CORE_VIOLET = "#C4B5FF";
 
-export function NeuralCore() {
+export function NeuralCore({
+  mood = "idle",
+  onSelect,
+}: {
+  mood?: FirstMateMood;
+  onSelect?: () => void;
+}) {
   const group = useRef<THREE.Group>(null);
   const pulse = useRef<THREE.Mesh>(null);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const graph = useMemo(() => buildNeuralGraph(176, 64), []);
   const pointGeo = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -35,30 +43,74 @@ export function NeuralCore() {
     [graph]
   );
   const sparkRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const moodRef = useRef(mood);
+  moodRef.current = mood;
+  const spin = useRef(0);
 
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    const beat = 0.5 + 0.5 * Math.sin(t * 2.15);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduceMotion(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useFrame((_, dt) => {
+    const t = performance.now() / 1000;
+    const current = moodRef.current;
+    const calm = reduceMotion;
+
+    let spinRate = 0.03;
+    let sparkMul = 0.35;
+    let beat = 0.12;
+    if (current === "thinking") {
+      spinRate = calm ? 0 : 1.65;
+      sparkMul = 2.4;
+      beat = 0;
+    } else if (current === "talking") {
+      spinRate = 0;
+      sparkMul = 1.1;
+      beat = 0.5 + 0.5 * Math.sin(t * 5.2);
+    } else if (current === "listening") {
+      spinRate = 0;
+      sparkMul = 0.8;
+      beat = 0.35 + 0.35 * Math.sin(t * 1.6);
+    }
+
     if (group.current) {
-      group.current.rotation.y = t * 0.12;
-      group.current.rotation.x = Math.sin(t * 0.17) * 0.08;
-      const s = 1 + beat * 0.045;
+      if (!calm) {
+        spin.current += dt * spinRate;
+        group.current.rotation.y = spin.current;
+        group.current.rotation.x = Math.sin(t * 0.17) * (current === "thinking" ? 0.14 : 0.04);
+      }
+      const s = current === "talking" && !calm ? 1 + beat * 0.12 : current === "listening" && !calm ? 1 + beat * 0.04 : 1;
       group.current.scale.setScalar(s);
     }
     if (pulse.current) {
       const mat = pulse.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.07 + beat * 0.11;
-      pulse.current.scale.setScalar(1.15 + beat * 0.18);
+      if (current === "talking") {
+        mat.opacity = 0.12 + beat * 0.28;
+        pulse.current.scale.setScalar(1.2 + beat * 0.35);
+      } else if (current === "listening") {
+        mat.opacity = 0.1 + beat * 0.12;
+        pulse.current.scale.setScalar(1.12 + beat * 0.1);
+      } else if (current === "thinking") {
+        mat.opacity = 0.14;
+        pulse.current.scale.setScalar(1.08);
+      } else {
+        mat.opacity = 0.06;
+        pulse.current.scale.setScalar(1.05);
+      }
     }
     sparks.forEach((spark, i) => {
       const mesh = sparkRefs.current[i];
       if (!mesh || spark.pts.length < 2) return;
-      const u = (t * spark.speed + spark.phase) % 1;
+      const u = (t * spark.speed * sparkMul + spark.phase) % 1;
       const idx = Math.min(spark.pts.length - 1, Math.floor(u * (spark.pts.length - 1)));
       const p = spark.pts[idx];
       mesh.position.copy(p);
       const mat = mesh.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.35 + Math.sin(u * Math.PI) * 0.65;
+      mat.opacity = current === "idle" ? 0.2 : 0.35 + Math.sin(u * Math.PI) * 0.65;
     });
   });
 
@@ -107,6 +159,23 @@ export function NeuralCore() {
           <meshBasicMaterial color="#FFFFFF" transparent opacity={0.8} />
         </mesh>
       ))}
+      <mesh
+        onPointerDown={(event) => {
+          if (!onSelect) return;
+          event.stopPropagation();
+          onSelect();
+        }}
+        onPointerOver={() => {
+          if (!onSelect) return;
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "";
+        }}
+      >
+        <sphereGeometry args={[0.92, 20, 20]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
       <pointLight color={CORE_CYAN} intensity={18} distance={9} decay={2} />
       <pointLight color={CORE_VIOLET} intensity={10} distance={7} decay={2} position={[0.2, -0.15, 0.1]} />
     </group>

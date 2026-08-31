@@ -2,19 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { useState } from "react";
 import { SignOutButton } from "@/components/auth-buttons";
 import { PlanetCanvas } from "@/components/three/planet-canvas";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AiDock } from "@/components/ai-dock";
 import { IngestPanel } from "@/components/ingest-panel";
+import { FirstMateOverlay } from "@/components/first-mate-overlay";
 import { useGalaxy } from "@/components/galaxy-provider";
-import { planetView, type PlanetId } from "@/lib/galaxy-types";
+import { planetView, type FirstMateMood, type PlanetId } from "@/lib/galaxy-types";
 import { civilizationScore } from "@/lib/chart-series";
 import { galaxyPopulation, planetColony } from "@/lib/civilization";
 import { round } from "@/lib/utils";
 import { ForgePlanetPanel } from "@/components/planets/forge-planet-panel";
+import { GalacticSchedule } from "@/components/galactic-schedule";
+import { openEvents } from "@/lib/galactic-events";
 
 export function BridgeConsole({ userName }: { userName?: string | null }) {
   const router = useRouter();
@@ -23,10 +26,13 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
   const enabled = store.planets.filter((p) => p.enabled);
   const civ = civilizationScore(store);
   const pop = galaxyPopulation(store);
+  const contacts = openEvents(store);
   const names = Object.fromEntries(store.planets.map((p) => [p.id, p.name])) as Record<
     PlanetId,
     string
   >;
+  const [mateOpen, setMateOpen] = useState(false);
+  const [coreMood, setCoreMood] = useState<FirstMateMood>("idle");
 
   if (loading) {
     return (
@@ -41,23 +47,15 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
       {/* Cockpit canopy */}
       <div className="relative h-[58vh] min-h-[360px] overflow-hidden">
         <PlanetCanvas
-          key={store.updated_at}
           planet="bridge"
           view="system"
           store={store}
           names={names}
           interactive
+          coreMood={coreMood}
+          onSelectCore={() => setMateOpen(true)}
           onSelectPlanet={(id) => router.push(planetView(store, id).route)}
           className="absolute inset-0 h-full w-full"
-        />
-
-        {/* Glass reflection crawl */}
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-          initial={{ left: "-30%" }}
-          animate={{ left: "110%" }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
         />
 
         {/* A-pillars + canopy lip */}
@@ -83,9 +81,13 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
             {inFlight.length
               ? ` · ${inFlight.length} ship${inFlight.length === 1 ? "" : "s"} in transit`
               : ""}
+            {contacts.length
+              ? ` · ${contacts.length} galactic contact${contacts.length === 1 ? "" : "s"}`
+              : ""}
           </p>
           <p className="mt-2 text-[11px] text-white/35">
-            Scroll to zoom. Hover a world for stats. Click to land. The Core is you — not a sun.
+            Scroll to zoom. Hover a world for stats. Click a planet to land. Click First Mate — the
+            lattice at the centre — to talk.
           </p>
         </div>
 
@@ -93,6 +95,18 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
           <SignOutButton />
         </div>
       </div>
+
+      {mateOpen ? (
+        <FirstMateOverlay
+          open={mateOpen}
+          onClose={() => {
+            setMateOpen(false);
+            setCoreMood("idle");
+          }}
+          mood={coreMood}
+          onMood={setCoreMood}
+        />
+      ) : null}
 
       {/* Console */}
       <div className="relative z-10 mx-auto grid max-w-6xl gap-4 px-4 pb-12 lg:grid-cols-2">
@@ -184,6 +198,9 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
             })}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
+            <ShimmerButton tone="#7AF0FF" onClick={() => setMateOpen(true)}>
+              Talk to First Mate
+            </ShimmerButton>
             <ShimmerButton href="/settings" tone="#A98BFF" variant="ghost">
               Settings & AI keys
             </ShimmerButton>
@@ -192,6 +209,10 @@ export function BridgeConsole({ userName }: { userName?: string | null }) {
             </ShimmerButton>
           </div>
         </GlassPanel>
+
+        <div className="lg:col-span-2">
+          <GalacticSchedule index={2} />
+        </div>
 
         <div className="lg:col-span-2">
           <ForgePlanetPanel />

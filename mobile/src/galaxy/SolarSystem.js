@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { motion, planetAccents, starColor, typography } from '../theme';
+import { accentForPlanet, motion, planetAccents, starColor, typography } from '../theme';
 import {
   depthOpacity,
   orbitAngle,
@@ -25,11 +25,12 @@ import { STAR } from './planets';
 import { buildNeuralCore2d } from './neuralCore';
 import PlanetBody from './PlanetBody';
 import Starfield from './Starfield';
+import { CRAFT_META, hashString } from './galacticEvents';
 
 /* --------------------------------------------------------- orbiting planet */
 
 const OrbitingPlanet = ({ planet, scale, clock, animate, onPress }) => {
-  const accent = planetAccents[planet.id];
+  const accent = accentForPlanet(planet);
   const { a, revs, phase, eccentricity } = planet.orbit;
   const box = planet.body.radius * 4;
 
@@ -184,6 +185,184 @@ const SignalShip = ({ signal, planetsById, scale, clock, animate, index }) => {
   );
 };
 
+const NeuralCoreHit = ({ animate, mood = 'idle', onPress, radius, core }) => {
+  const spin = useSharedValue(0);
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    if (!animate) {
+      spin.value = withTiming(0, { duration: 200 });
+      pulse.value = withTiming(0, { duration: 200 });
+      return undefined;
+    }
+    if (mood === 'thinking') {
+      spin.value = withRepeat(
+        withTiming(360, { duration: 1800, easing: Easing.linear }),
+        -1,
+        false
+      );
+      pulse.value = withTiming(0, { duration: 180 });
+    } else if (mood === 'talking') {
+      spin.value = withTiming(spin.value, { duration: 180 });
+      pulse.value = withRepeat(
+        withTiming(1, { duration: 480, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      );
+    } else if (mood === 'listening') {
+      spin.value = withTiming(0, { duration: 220 });
+      pulse.value = withRepeat(
+        withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
+        -1,
+        true
+      );
+    } else {
+      spin.value = withTiming(0, { duration: 280 });
+      pulse.value = withTiming(0, { duration: 280 });
+    }
+    return undefined;
+  }, [animate, mood, pulse, spin]);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${spin.value}deg` }, { scale: 1 + pulse.value * 0.08 }],
+  }));
+
+  const size = radius * 2.6;
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          width: size,
+          height: size,
+          marginLeft: -size / 2,
+          marginTop: -size / 2,
+        },
+        style,
+      ]}
+    >
+      <Svg width={size} height={size} viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`}>
+        <Circle cx={0} cy={0} r={radius * 0.55} fill={starColor.mid} opacity={0.22} />
+        {(core?.axons || []).map((d, index) => (
+          <Path
+            key={`axon-${index}`}
+            d={d}
+            stroke={index % 2 === 0 ? starColor.core : starColor.mid}
+            strokeWidth={1.1}
+            strokeOpacity={0.45}
+            fill="none"
+          />
+        ))}
+        {(core?.points || []).map((p, index) => (
+          <Circle
+            key={`node-${index}`}
+            cx={p.x}
+            cy={p.y}
+            r={1.6}
+            fill={starColor.core}
+            opacity={0.9}
+          />
+        ))}
+      </Svg>
+      <Pressable
+        onPress={onPress}
+        style={StyleSheet.absoluteFill}
+        accessibilityRole="button"
+        accessibilityLabel="Talk to First Mate"
+        hitSlop={12}
+      />
+    </Animated.View>
+  );
+};
+
+/* ---------------------------------------------------------- galactic craft */
+
+const EventCraft = ({ event, planetsById, scale, clock }) => {
+  const seed = hashString(event.id);
+  const planet = event.planet_id ? planetsById[event.planet_id] : null;
+  const a = (planet?.orbit.a ?? 1.18) + (planet ? 0.12 + seed * 0.06 : seed * 0.08);
+  const revs = planet?.orbit.revs ?? 2;
+  const phase = (planet?.orbit.phase ?? 0) + seed * 1.7;
+  const eccentricity = planet?.orbit.eccentricity ?? 0.08;
+  const color = CRAFT_META[event.craft]?.color ?? '#F5C542';
+
+  const style = useAnimatedStyle(() => {
+    const angle = orbitAngle(phase, revs, clock.value);
+    const point = orbitPoint(a, eccentricity, angle);
+    const s = project(point.x, point.y, point.z, scale);
+    return {
+      opacity: depthOpacity(s.k),
+      transform: [
+        { translateX: s.sx },
+        { translateY: s.sy },
+        { rotateZ: `${(angle * 180) / Math.PI}deg` },
+        { scale: 0.72 + s.k * 0.32 },
+      ],
+    };
+  }, [a, eccentricity, phase, revs, scale]);
+
+  return (
+    <Animated.View pointerEvents="none" style={[styles.craft, style]}>
+      <CraftGlyph kind={event.craft} color={color} id={event.id} />
+    </Animated.View>
+  );
+};
+
+const CraftGlyph = ({ kind, color, id }) => {
+  if (kind === 'envoy') {
+    return (
+      <Svg width={28} height={18}>
+        <Circle cx={14} cy={9} r={6} stroke={color} strokeWidth={1.4} fill="none" />
+        <Path d="M6 9 L22 9" stroke={color} strokeWidth={1.6} />
+        <Circle cx={22} cy={9} r={2.2} fill={color} />
+      </Svg>
+    );
+  }
+  if (kind === 'monster') {
+    return (
+      <Svg width={28} height={18}>
+        <Path
+          d="M8 9 C8 4 13 3 16 6 C20 3 24 7 22 11 C19 16 10 15 8 9 Z"
+          fill={color}
+          opacity={0.9}
+        />
+        <Circle cx={17} cy={8} r={1.4} fill="#FFFFFF" />
+      </Svg>
+    );
+  }
+  if (kind === 'astronaut') {
+    return (
+      <Svg width={22} height={22}>
+        <Circle cx={11} cy={11} r={5} fill={color} />
+        <Circle cx={11} cy={11} r={8} stroke={color} strokeWidth={1} fill="none" opacity={0.55} />
+        <Circle cx={11} cy={11} r={2} fill="#FFFFFF" />
+      </Svg>
+    );
+  }
+  if (kind === 'armada') {
+    return (
+      <Svg width={36} height={16}>
+        <Path d="M2 8 L12 4 L12 12 Z" fill={color} />
+        <Path d="M14 8 L24 5 L24 11 Z" fill={color} opacity={0.85} />
+        <Path d="M26 8 L34 6 L34 10 Z" fill={color} opacity={0.7} />
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={32} height={14}>
+      <Defs>
+        <RadialGradient id={`wtrail-${id}`} cx="88%" cy="50%" r="72%">
+          <Stop offset="0" stopColor={color} stopOpacity="0.95" />
+          <Stop offset="1" stopColor={color} stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Path d="M0 7 L22 3 L22 11 Z" fill={`url(#wtrail-${id})`} />
+      <Path d="M20 7 L30 3.5 L32 7 L30 10.5 Z" fill={color} />
+    </Svg>
+  );
+};
+
 /* ---------------------------------------------------------------- system */
 
 const SolarSystem = ({
@@ -191,9 +370,12 @@ const SolarSystem = ({
   height,
   planets,
   signals = [],
+  events = [],
   clock,
   animate = true,
   onSelectPlanet,
+  onSelectCore,
+  coreMood = 'idle',
   horizon = 0.44,
 }) => {
   const cx = width / 2;
@@ -211,7 +393,7 @@ const SolarSystem = ({
       planets.map((planet) => ({
         id: planet.id,
         ...orbitPaths(planet.orbit.a, planet.orbit.eccentricity, scale),
-        accent: planetAccents[planet.id].mid,
+        accent: accentForPlanet(planet).mid,
       })),
     [planets, scale]
   );
@@ -265,26 +447,6 @@ const SolarSystem = ({
         )}
 
         <Circle cx={0} cy={0} r={STAR.radius * 2.4 * starGlow} fill="url(#star-glow)" />
-        {core.axons.map((d, index) => (
-          <Path
-            key={`axon-${index}`}
-            d={d}
-            stroke={index % 2 === 0 ? starColor.core : starColor.mid}
-            strokeWidth={1.1}
-            strokeOpacity={0.45}
-            fill="none"
-          />
-        ))}
-        {core.points.map((p, index) => (
-          <Circle
-            key={`node-${index}`}
-            cx={p.x}
-            cy={p.y}
-            r={1.6}
-            fill={starColor.core}
-            opacity={0.9}
-          />
-        ))}
 
         {/* Near halves in front of it. */}
         {rings.map((ring) =>
@@ -314,6 +476,13 @@ const SolarSystem = ({
             onPress={onSelectPlanet}
           />
         ))}
+        <NeuralCoreHit
+          animate={animate}
+          mood={coreMood}
+          radius={STAR.radius * starGlow}
+          core={core}
+          onPress={onSelectCore}
+        />
         {signals.map((signal, index) => (
           <SignalShip
             key={signal.id}
@@ -325,6 +494,18 @@ const SolarSystem = ({
             index={index}
           />
         ))}
+        {events
+          .filter((event) => event.status !== 'done')
+          .slice(0, 16)
+          .map((event) => (
+            <EventCraft
+              key={event.id}
+              event={event}
+              planetsById={planetsById}
+              scale={scale}
+              clock={clock}
+            />
+          ))}
       </View>
     </View>
   );
@@ -361,6 +542,15 @@ const styles = StyleSheet.create({
     height: 16,
     marginLeft: -27,
     marginTop: -8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  craft: {
+    position: 'absolute',
+    width: 36,
+    height: 22,
+    marginLeft: -18,
+    marginTop: -11,
     alignItems: 'center',
     justifyContent: 'center',
   },

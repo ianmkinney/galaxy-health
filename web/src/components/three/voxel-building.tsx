@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Billboard, Line, Text } from "@react-three/drei";
 import * as THREE from "three";
 import type { ColonyBuilding } from "@/lib/civilization";
 import {
@@ -79,7 +79,6 @@ function VoxelStack({
     [voxels, freshness]
   );
   const dim = 0.55 + freshness * 0.45;
-  const height = (Math.max(0, ...voxels.map((v) => v.y)) + 1) * voxelSize;
   const fallMul = mode === "orbit" ? 16 : 9;
 
   useLayoutEffect(() => {
@@ -196,16 +195,60 @@ function VoxelStack({
           />
         </instancedMesh>
       ) : null}
-      {mode === "surface" ? (
-        <Html distanceFactor={7} position={[0, height + voxelSize * 1.2, 0]} style={{ pointerEvents: "none" }}>
-          <div className="whitespace-nowrap rounded-md bg-black/65 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/85">
-            {building.name}
-            {building.condition !== "sound" ? (
-              <span className="ml-1 text-white/40">{building.condition}</span>
-            ) : null}
-          </div>
-        </Html>
-      ) : null}
+    </group>
+  );
+}
+
+function SurfaceCallout({
+  name,
+  condition,
+  theta,
+  padRadius,
+  index,
+}: {
+  name: string;
+  condition: ColonyBuilding["condition"];
+  theta: number;
+  padRadius: number;
+  index: number;
+}) {
+  const labelR = 2.58 + (index % 2) * 0.16;
+  const x = Math.cos(theta) * labelR;
+  const z = Math.sin(theta) * labelR;
+  const bx = Math.cos(theta) * padRadius;
+  const bz = Math.sin(theta) * padRadius;
+  const y = 0.38 + (index % 3) * 0.1;
+  const label = (name.length > 18 ? `${name.slice(0, 16)}…` : name).toUpperCase();
+  const tone = condition === "sound" ? "#f4f7ff" : condition === "weathering" ? "#fde68a" : "#fecdd3";
+
+  return (
+    <group>
+      <Line
+        points={[
+          [bx, 0.16, bz],
+          [x, y, z],
+        ]}
+        color="#ffffff"
+        transparent
+        opacity={0.28}
+        lineWidth={1}
+      />
+      <Billboard position={[x, y + 0.08, z]} follow>
+        <Text
+          fontSize={0.085}
+          letterSpacing={0.04}
+          color={tone}
+          anchorX="center"
+          anchorY="bottom"
+          outlineWidth={0.01}
+          outlineColor="#05070F"
+          maxWidth={1.15}
+          overflowWrap="break-word"
+          textAlign="center"
+        >
+          {label}
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -232,12 +275,14 @@ export function VoxelBuildingField({
             UP,
             new THREE.Vector3(p.x, p.y, p.z).normalize()
           );
-          return { building, position: [p.x, p.y, p.z] as const, quaternion };
+          return { building, theta, padRadius: 0, position: [p.x, p.y, p.z] as const, quaternion };
         }
-        const r = 1.05 + (index % 3) * 0.28;
+        const padRadius = 1.22 + (index % 2) * 0.42;
         return {
           building,
-          position: [Math.cos(theta) * r, 0, Math.sin(theta) * r] as const,
+          theta,
+          padRadius,
+          position: [Math.cos(theta) * padRadius, 0, Math.sin(theta) * padRadius] as const,
           quaternion: null,
         };
       }),
@@ -261,6 +306,18 @@ export function VoxelBuildingField({
           />
         </group>
       ))}
+      {mode === "surface"
+        ? sites.map(({ building, theta, padRadius }, index) => (
+            <SurfaceCallout
+              key={`label-${building.id}`}
+              name={building.name}
+              condition={building.condition}
+              theta={theta}
+              padRadius={padRadius}
+              index={index}
+            />
+          ))
+        : null}
     </group>
   );
 }

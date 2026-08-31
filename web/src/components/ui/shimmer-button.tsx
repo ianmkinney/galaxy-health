@@ -12,6 +12,7 @@ type ShimmerButtonProps = {
   onClick?: () => void;
   children: React.ReactNode;
   href?: string;
+  type?: "button" | "submit";
 };
 
 /** Kokonut-style shimmer CTA with Motion press physics. */
@@ -23,6 +24,7 @@ export function ShimmerButton({
   disabled,
   onClick,
   href,
+  type = "button",
 }: ShimmerButtonProps) {
   const solid = variant === "solid";
   const classes = cn(
@@ -61,7 +63,7 @@ export function ShimmerButton({
 
   return (
     <motion.button
-      type="button"
+      type={type}
       whileTap={disabled ? undefined : { scale: 0.96 }}
       whileHover={disabled ? undefined : { scale: 1.02 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}

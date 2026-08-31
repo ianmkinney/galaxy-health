@@ -18,7 +18,7 @@ import React, { memo, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Canvas, useFrame } from './GLCanvas';
-import { motion, planetAccents, starColor } from '../theme';
+import { motion, accentForPlanet, starColor } from '../theme';
 import { CAMERA, orbitAngle, orbitPoint, signalPoint, TILT_COS, TILT_SIN } from './math3d';
 import { STAR } from './planets';
 
@@ -37,7 +37,7 @@ const loopProgress = (elapsedSeconds) =>
 const Planet = ({ planet, animate, onSelect }) => {
   const group = useRef(null);
   const { a, revs, phase, eccentricity } = planet.orbit;
-  const accent = planetAccents[planet.id];
+  const accent = accentForPlanet(planet);
   const radius = planet.body.radius / PX_PER_UNIT;
 
   useFrame(({ clock }) => {
@@ -97,7 +97,7 @@ const OrbitRing = ({ planet }) => {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <lineBasicMaterial
-        color={planetAccents[planet.id].core}
+        color={accentForPlanet(planet).core}
         transparent
         opacity={0.22}
       />
@@ -105,7 +105,8 @@ const OrbitRing = ({ planet }) => {
   );
 };
 
-const Star = () => {
+const Star = ({ mood = 'idle', animate = true, onSelect }) => {
+  const group = useRef(null);
   const graph = useMemo(() => {
     const n = 64;
     const positions = new Float32Array(n * 3);
@@ -123,8 +124,25 @@ const Star = () => {
     return positions;
   }, []);
 
+  useFrame((_, dt) => {
+    if (!group.current || !animate) return;
+    const t = performance.now() / 1000;
+    if (mood === 'thinking') {
+      group.current.rotation.y += dt * 1.6;
+      group.current.scale.setScalar(1);
+    } else if (mood === 'talking') {
+      const beat = 0.5 + 0.5 * Math.sin(t * 5.2);
+      group.current.scale.setScalar(1 + beat * 0.1);
+    } else if (mood === 'listening') {
+      const beat = 0.35 + 0.35 * Math.sin(t * 1.6);
+      group.current.scale.setScalar(1 + beat * 0.04);
+    } else {
+      group.current.scale.setScalar(1);
+    }
+  });
+
   return (
-    <group>
+    <group ref={group} onPointerDown={onSelect ? () => onSelect() : undefined}>
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[graph, 3]} />
@@ -132,7 +150,7 @@ const Star = () => {
         <pointsMaterial color={starColor.core} size={0.035} transparent opacity={0.95} />
       </points>
       <mesh>
-        <sphereGeometry args={[STAR.radius / PX_PER_UNIT * 0.28, 16, 12]} />
+        <sphereGeometry args={[(STAR.radius / PX_PER_UNIT) * 0.28, 16, 12]} />
         <meshBasicMaterial color={starColor.mid} transparent opacity={0.22} />
       </mesh>
       <pointLight intensity={1.6} distance={12} decay={1.4} color={starColor.core} />
@@ -174,17 +192,17 @@ const SignalCraft = ({ signal, planets, animate }) => {
   return (
     <mesh ref={mesh}>
       <sphereGeometry args={[0.022, 12, 10]} />
-      <meshBasicMaterial color={planetAccents[from.id].core} />
+      <meshBasicMaterial color={accentForPlanet(from).core} />
     </mesh>
   );
 };
 
 /* ------------------------------------------------------------------- scene */
 
-const Scene = ({ planets, signals, animate, onSelectPlanet }) => (
+const Scene = ({ planets, signals, animate, onSelectPlanet, onSelectCore, coreMood }) => (
   <>
     <ambientLight intensity={0.35} />
-    <Star />
+    <Star mood={coreMood} animate={animate} onSelect={onSelectCore} />
     {planets.map((planet) => (
       <OrbitRing key={'ring-' + planet.id} planet={planet} />
     ))}
@@ -214,6 +232,8 @@ const SolarSystemGL = ({
   signals = [],
   animate = true,
   onSelectPlanet,
+  onSelectCore,
+  coreMood = 'idle',
 }) => {
   // Match the SVG renderer's camera so switching renderers does not reframe the
   // scene: same tilt above the ecliptic, same distance out along -Z.
@@ -234,6 +254,8 @@ const SolarSystemGL = ({
           signals={signals}
           animate={animate}
           onSelectPlanet={onSelectPlanet}
+          onSelectCore={onSelectCore}
+          coreMood={coreMood}
         />
       </Canvas>
     </View>

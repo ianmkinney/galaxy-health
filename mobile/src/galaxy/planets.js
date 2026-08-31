@@ -11,6 +11,28 @@ export const PLANET_IDS = {
   OBSERVATORY: 'observatory',
 };
 
+export const CORE_PLANET_IDS = [
+  PLANET_IDS.GALLEY,
+  PLANET_IDS.ATLAS,
+  PLANET_IDS.LUMEN,
+  PLANET_IDS.OBSERVATORY,
+];
+
+export const isCorePlanet = (id) => CORE_PLANET_IDS.includes(id);
+
+export const BUILDING_KINDS = [
+  'hall',
+  'track',
+  'forge',
+  'kitchen',
+  'lab',
+  'sanctuary',
+  'market',
+  'silo',
+  'archive',
+  'spire',
+];
+
 export const PLANETS = [
   {
     id: PLANET_IDS.GALLEY,
@@ -66,6 +88,6 @@ export const getPlanet = (id) => PLANET_BY_ID[id] ?? null;
 // The core at the centre. Not a star — a neural lattice. The user is the nucleus.
 export const STAR = {
   id: 'core',
-  defaultName: 'Core',
+  defaultName: 'First Mate',
   radius: 46,
 };

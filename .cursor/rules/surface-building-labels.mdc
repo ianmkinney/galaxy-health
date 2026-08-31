@@ -1,0 +1,14 @@
+---
+description: Surface building names sit on a callout ring, never stacked on the voxel pile.
+globs: web/src/components/three/**/*.tsx
+alwaysApply: false
+---
+
+# Surface building labels
+
+On the landed planet view, building names are **3D callouts** on a ring around the pad (`SurfaceCallout` in `voxel-building.tsx`): a leader line plus drei `Text` on a `Billboard`. They are not HTML overlays glued to the voxel stack (those project on top of each other in the canvas center).
+
+- Orbit / space view: no name labels (buildings only).
+- Surface: one label per building, even theta, outer ring (~2.6), slight radius/height stagger.
+- If they overlap, increase label radius or drop font size — do not use `Html` on the building origin.
+- Truncate long names. Keep labels non-interactive.

@@ -95,5 +95,7 @@ export const purgeLogs = async () => {
     DELETE FROM lumen_checkins;
     DELETE FROM observatory_markers;
     DELETE FROM signals;
+    DELETE FROM tracking_entries;
+    DELETE FROM first_mate_messages;
   `);
 };

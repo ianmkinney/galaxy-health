@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Galaxy Health",
   description:
-    "A living health galaxy. Worlds orbit a neural core — populate them with the information that makes you your healthiest self.",
+    "A living health galaxy. Worlds orbit First Mate — populate them with the information that makes you your healthiest self.",
 };
 
 export default function RootLayout({

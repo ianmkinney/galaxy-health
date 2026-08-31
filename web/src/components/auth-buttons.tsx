@@ -7,6 +7,7 @@ import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { PlanetCanvas } from "@/components/three/planet-canvas";
 import { emptyStore } from "@/lib/galaxy-types";
 import { seedHealthyTestData } from "@/lib/test-data";
+import { LegalFooter } from "@/components/legal-footer";
 
 export function GoogleSignInButton() {
   return (
@@ -56,8 +57,8 @@ export function LandingHero() {
           </span>
         </h1>
         <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-white/60">
-          Four worlds orbit a living neural core — you. Logs, files, and systems you set up raise
-          cities. Sign in with Google; data lives in your private Drive app folder.
+          Worlds orbit First Mate — the neural lattice you talk to. Logs, files, and systems you set
+          up raise cities. Sign in with Google; data lives in your private Drive app folder.
         </p>
         <div className="mt-8 flex justify-center">
           <GoogleSignInButton />
@@ -66,6 +67,7 @@ export function LandingHero() {
           Uses Google OAuth + Drive <code className="text-white/50">appDataFolder</code>.
           Mobile stays on-device.
         </p>
+        <LegalFooter className="mt-10" />
       </motion.div>
     </div>
   );

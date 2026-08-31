@@ -14,12 +14,14 @@ import StatReadout from '../components/StatReadout';
 import GlowButton from '../components/GlowButton';
 import LogRow from '../components/LogRow';
 import InboxPanel from '../components/InboxPanel';
+import SystemsLedger from '../components/SystemsLedger';
 import { ChipRow, Field } from '../components/Field';
 
 const accent = planetAccents.galley;
 
 const TABS = [
   { value: 'fuel', label: 'Fuel' },
+  { value: 'systems', label: 'Systems' },
   { value: 'recipes', label: 'Recipes' },
   { value: 'pantry', label: 'Pantry' },
   { value: 'grocery', label: 'Grocery' },
@@ -145,6 +147,7 @@ const GalleyScreen = () => {
       subtitle="Food & fuel"
       title={planetName(PLANET_IDS.GALLEY)}
       tagline="Logs, files, and systems raise this world. Same household loop as Food Dude."
+      planetId={PLANET_IDS.GALLEY}
       footer={
         tab === 'fuel' ? (
           <GlowButton
@@ -276,6 +279,10 @@ const GalleyScreen = () => {
         )}
       </HoloPanel>
         </>
+      ) : null}
+
+      {tab === 'systems' ? (
+        <SystemsLedger theme={theme} accent={accent} planetId={PLANET_IDS.GALLEY} />
       ) : null}
 
       {tab === 'recipes' ? (

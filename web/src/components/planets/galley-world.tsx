@@ -46,7 +46,7 @@ export function GalleyWorld() {
       {tab === "recipes" ? <GalleyRecipeBook /> : null}
       {tab === "pantry" ? <GalleyPantry /> : null}
       {tab === "grocery" ? <GalleyGrocery /> : null}
-      {tab === "plan" ? <GalleyMealPlan /> : null}
+      {tab === "plan" ? <GalleyMealPlan key="meal-plan-cells" /> : null}
       {tab === "chef" ? <GalleyChef /> : null}
     </PlanetHabitat>
   );

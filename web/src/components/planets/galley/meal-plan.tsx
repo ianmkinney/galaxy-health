@@ -8,6 +8,7 @@ import { useGalaxy } from "@/components/galaxy-provider";
 import { uid, type MealPlanSlot } from "@/lib/galaxy-types";
 import { planForSlot } from "@/lib/galley-ops";
 import { addDays, startOfWeek, todayKey, weekdayLabel, weekDates } from "@/lib/utils";
+import { PlanSlotCell } from "@/components/planets/galley/plan-slot-cell";
 
 const SLOTS: MealPlanSlot["slot"][] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -75,41 +76,21 @@ export function GalleyMealPlan() {
               {SLOTS.map((slot) => (
                 <tr key={slot} className="border-t border-white/10">
                   <td className="p-2 capitalize text-orange-200/70">{slot}</td>
-                  {days.map((day) => {
-                    const rows = planForSlot(store.mealPlans, day, slot);
-                    return (
-                      <td key={day} className="p-1 align-top">
-                        <button
-                          type="button"
-                          onClick={() => setPick({ day, slot })}
-                          className="min-h-[56px] w-full rounded-lg border border-white/10 bg-black/20 p-1.5 text-left hover:border-orange-300/40"
-                        >
-                          {rows.length === 0 ? (
-                            <span className="text-white/25">+</span>
-                          ) : (
-                            rows.map((row) => (
-                              <div key={row.id} className="mb-1 flex items-start justify-between gap-1">
-                                <span className="text-white/80">{row.title}</span>
-                                <button
-                                  type="button"
-                                  className="text-white/25 hover:text-rose-300"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    update((d) => ({
-                                      ...d,
-                                      mealPlans: d.mealPlans.filter((p) => p.id !== row.id),
-                                    }));
-                                  }}
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </button>
-                      </td>
-                    );
-                  })}
+                  {days.map((day) => (
+                    <PlanSlotCell
+                      key={day}
+                      day={day}
+                      slot={slot}
+                      rows={planForSlot(store.mealPlans, day, slot)}
+                      onAssign={() => setPick({ day, slot })}
+                      onRemove={(id) =>
+                        update((d) => ({
+                          ...d,
+                          mealPlans: d.mealPlans.filter((p) => p.id !== id),
+                        }))
+                      }
+                    />
+                  ))}
                 </tr>
               ))}
             </tbody>

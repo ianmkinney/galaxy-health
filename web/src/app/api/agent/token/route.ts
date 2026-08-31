@@ -36,6 +36,8 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const origin = process.env.AUTH_URL || `${url.protocol}//${url.host}`;
   const ingestUrl = `${origin}/api/ingest`;
+  const firstMateUrl = `${origin}/api/first-mate`;
+  const firstMateSmsUrl = `${origin}/api/first-mate/sms?token=${encodeURIComponent(credential)}`;
   const getExample = `${ingestUrl}?token=${encodeURIComponent(credential)}&text=${encodeURIComponent("Ate eggs (420 kcal) and ran 30 min, slept 7.5h")}`;
   const agentPrompt = buildAgentPrompt({ origin, ingestUrl, token: credential });
 
@@ -44,6 +46,8 @@ export async function POST(request: Request) {
     tokenId,
     origin,
     ingestUrl,
+    firstMateUrl,
+    firstMateSmsUrl,
     agentPrompt,
     examples: {
       get: getExample,

@@ -217,6 +217,7 @@ export function seedHealthyTestData(store: GalaxyStore): GalaxyStore {
   stampTestNotes(next.programs);
   stampTestNotes(next.rituals);
   stampTestNotes(next.signals);
+  stampTestNotes(next.events ?? []);
   next.updated_at = Date.now();
   return next;
 }
@@ -236,6 +237,7 @@ export function stripTestData(store: GalaxyStore): GalaxyStore {
   next.programs = keep(next.programs as MaybeSourced[]) as typeof next.programs;
   next.rituals = keep(next.rituals as MaybeSourced[]) as typeof next.rituals;
   next.signals = keep(next.signals as MaybeSourced[]) as typeof next.signals;
+  next.events = keep((next.events ?? []) as MaybeSourced[]) as typeof next.events;
   next.worlds = keep(next.worlds as MaybeSourced[]) as typeof next.worlds;
   next.systems = keep(next.systems as MaybeSourced[]) as typeof next.systems;
   next.entries = keep(next.entries as MaybeSourced[]) as typeof next.entries;
@@ -260,6 +262,7 @@ export function countTestRows(store: GalaxyStore) {
     store.programs,
     store.rituals,
     store.signals,
+    store.events ?? [],
     store.worlds ?? [],
     store.systems ?? [],
     store.entries ?? [],

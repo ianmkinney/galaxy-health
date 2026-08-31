@@ -4,13 +4,14 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
-import type { GalaxyStore, PlanetId, Signal } from "@/lib/galaxy-types";
+import type { FirstMateMood, GalaxyStore, PlanetId, Signal } from "@/lib/galaxy-types";
 import { emptyStore, planetView } from "@/lib/galaxy-types";
 import { planetColony } from "@/lib/civilization";
 import { orbitWorldPosition } from "@/lib/neural-geometry";
 import { NeuralCore } from "./neural-core";
 import { OrbitingWorld, PortraitPlanet } from "./orbiting-world";
 import { PlanetSurfaceScene } from "./planet-surface";
+import { GalacticFleet } from "./galactic-craft";
 
 function SignalCraft({
   signal,
@@ -58,11 +59,15 @@ function SystemScene({
   names,
   interactive,
   onSelect,
+  coreMood,
+  onSelectCore,
 }: {
   store: GalaxyStore;
   names?: Partial<Record<PlanetId, string>>;
   interactive?: boolean;
   onSelect?: (id: PlanetId) => void;
+  coreMood?: FirstMateMood;
+  onSelectCore?: () => void;
 }) {
   const enabled = store.planets.filter((p) => p.enabled);
   const inFlight = store.signals.filter((s) => !s.seen).slice(0, 10);
@@ -75,7 +80,7 @@ function SystemScene({
       <hemisphereLight args={["#9ad4ff", "#12081a", 0.4]} />
       <directionalLight position={[6, 8, 4]} intensity={1.15} color="#fff6ea" />
       <Stars radius={90} depth={50} count={1600} factor={3.2} saturation={0} fade speed={0.45} />
-      <NeuralCore />
+      <NeuralCore mood={coreMood} onSelect={onSelectCore} />
       {enabled.map((planet) => {
         const view = planetView(store, planet.id);
         return (
@@ -93,6 +98,7 @@ function SystemScene({
       {inFlight.map((signal) => (
         <SignalCraft key={signal.id} signal={signal} store={store} />
       ))}
+      <GalacticFleet store={store} />
     </>
   );
 }
@@ -129,6 +135,8 @@ export function PlanetCanvas({
   interactive,
   view,
   onSelectPlanet,
+  onSelectCore,
+  coreMood,
 }: {
   planet: PlanetId | "bridge";
   className?: string;
@@ -137,6 +145,8 @@ export function PlanetCanvas({
   interactive?: boolean;
   view?: "system" | "portrait" | "surface";
   onSelectPlanet?: (id: PlanetId) => void;
+  onSelectCore?: () => void;
+  coreMood?: FirstMateMood;
 }) {
   const data = store ?? emptyStore();
   const mode = view ?? (planet === "bridge" ? "system" : "portrait");
@@ -157,7 +167,14 @@ export function PlanetCanvas({
       <Canvas camera={camera} gl={{ antialias: true, alpha: true }} dpr={[1, 1.75]}>
         <Suspense fallback={null}>
           {mode === "system" ? (
-            <SystemScene store={data} names={names} interactive={interactive} onSelect={onSelectPlanet} />
+            <SystemScene
+              store={data}
+              names={names}
+              interactive={interactive}
+              onSelect={onSelectPlanet}
+              coreMood={coreMood}
+              onSelectCore={onSelectCore}
+            />
           ) : mode === "surface" ? (
             planet !== "bridge" ? <SurfaceScene planet={planet} store={data} /> : null
           ) : planet !== "bridge" ? (

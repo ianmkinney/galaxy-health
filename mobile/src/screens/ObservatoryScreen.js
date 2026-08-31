@@ -13,9 +13,15 @@ import HoloPanel from '../components/HoloPanel';
 import GlowButton from '../components/GlowButton';
 import LogRow from '../components/LogRow';
 import InboxPanel from '../components/InboxPanel';
-import { Field } from '../components/Field';
+import SystemsLedger from '../components/SystemsLedger';
+import { ChipRow, Field } from '../components/Field';
 
 const accent = planetAccents.observatory;
+
+const TABS = [
+  { value: 'assays', label: 'Assays' },
+  { value: 'systems', label: 'Systems' },
+];
 
 const round = (value, digits = 2) => {
   const factor = 10 ** digits;
@@ -41,6 +47,7 @@ const ObservatoryScreen = () => {
   const [markers, setMarkers] = useState([]);
   const [form, setForm] = useState({ marker: '', value: '', unit: '', low: '', high: '' });
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState('assays');
 
   const load = useCallback(async () => {
     setMarkers(await observatoryRepo.listRecent());
@@ -95,17 +102,31 @@ const ObservatoryScreen = () => {
       subtitle="Labs & biomarkers"
       title={planetName(PLANET_IDS.OBSERVATORY)}
       tagline="Manual assay intake. Everything stays on this device."
+      planetId={PLANET_IDS.OBSERVATORY}
       footer={
-        <GlowButton
-          theme={theme}
-          tone={accent.mid}
-          label={saving ? 'Filing…' : 'File assay & transmit'}
-          icon="planet"
-          onPress={handleLog}
-          disabled={!canSave}
-        />
+        tab === 'assays' ? (
+          <GlowButton
+            theme={theme}
+            tone={accent.mid}
+            label={saving ? 'Filing…' : 'File assay & transmit'}
+            icon="planet"
+            onPress={handleLog}
+            disabled={!canSave}
+          />
+        ) : null
       }
     >
+      <ChipRow
+        theme={theme}
+        accent={accent}
+        options={TABS}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'systems' ? (
+        <SystemsLedger theme={theme} accent={accent} planetId={PLANET_IDS.OBSERVATORY} />
+      ) : (
+        <>
       <HoloPanel theme={theme} title="Station status" accent={accent.mid} index={0}>
         <Text style={[styles.body, { color: theme.colors.text.secondary }]}>
           Type results from a blood panel and the station forwards each marker to{' '}
@@ -208,6 +229,8 @@ const ObservatoryScreen = () => {
         index={3}
         emptyHint="The station is a transmitter today; nothing routes back to it yet."
       />
+        </>
+      )}
     </ScreenShell>
   );
 };

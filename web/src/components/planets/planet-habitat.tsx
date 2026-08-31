@@ -7,6 +7,7 @@ import { useGalaxy } from "@/components/galaxy-provider";
 import { planetView, type PlanetId } from "@/lib/galaxy-types";
 import { planetColony } from "@/lib/civilization";
 import { cn } from "@/lib/utils";
+import { GalacticSchedule } from "@/components/galactic-schedule";
 
 export function PlanetHabitat({
   id,
@@ -43,7 +44,7 @@ export function PlanetHabitat({
                   : `radial-gradient(ellipse at 50% 0%, ${meta.accent}38, transparent 50%), linear-gradient(180deg,#05070F 0%,#05070F 50%)`,
       }}
     >
-      <div className="pointer-events-auto absolute inset-x-0 top-0 h-[46vh] opacity-95">
+      <div className="pointer-events-auto absolute inset-x-0 top-0 h-[46vh] overflow-visible opacity-95">
         <PlanetCanvas
           key={`${id}-${store.updated_at}`}
           planet={id}
@@ -107,6 +108,9 @@ export function PlanetHabitat({
         </div>
 
         <div className="mt-6">{children}</div>
+        <div className="mt-6">
+          <GalacticSchedule planetId={id} compact index={8} />
+        </div>
       </div>
     </div>
   );

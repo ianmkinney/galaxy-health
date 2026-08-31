@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { getTheme, motion, planetAccents, spacing, typography } from '../theme';
+import { accentForPlanet, getTheme, motion, planetAccents, spacing, typography } from '../theme';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useGalaxy } from '../state/GalaxyContext';
 import { SIGNAL_LABEL, describeSignal } from '../state/signalKinds';
@@ -16,6 +16,9 @@ import HoloPanel from '../components/HoloPanel';
 import StatReadout from '../components/StatReadout';
 import GlowButton, { GlowIconButton } from '../components/GlowButton';
 import AnimatedPressable from '../components/AnimatedPressable';
+import ForgePlanetPanel from '../components/ForgePlanetPanel';
+import GalacticSchedule from '../components/GalacticSchedule';
+import { openEvents } from '../galaxy/galacticEvents';
 
 const round = (value, digits = 0) => {
   const factor = 10 ** digits;
@@ -26,7 +29,7 @@ const BridgeScreen = ({ navigation }) => {
   const theme = getTheme(true);
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const { enabledPlanets, planetName, totals, inFlight } = useGalaxy();
+  const { enabledPlanets, planetName, totals, inFlight, events } = useGalaxy();
 
   const clock = useOrbitClock(!reduceMotion);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -60,6 +63,7 @@ const BridgeScreen = ({ navigation }) => {
   const load = totals.atlas;
   const mind = totals.lumen;
   const netFuel = round(fuel.calories - load.burn);
+  const contacts = openEvents(events);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.backgroundDeep }]}>
@@ -71,14 +75,15 @@ const BridgeScreen = ({ navigation }) => {
               height={viewport.height}
               planets={enabledPlanets}
               signals={inFlight}
+              events={events}
               clock={clock}
               animate={!reduceMotion}
               onSelectPlanet={handleSelect}
+              onSelectCore={() => navigation.navigate('FirstMate')}
             />
             <CockpitFrame
               width={viewport.width}
               height={viewport.height}
-              animate={!reduceMotion}
               accent={theme.palette.plasma[300]}
             />
           </>
@@ -94,19 +99,21 @@ const BridgeScreen = ({ navigation }) => {
           </Text>
           <Text style={[styles.title, { color: theme.colors.text.primary }]}>Galaxy Health</Text>
           <Text style={[styles.subtitle, { color: theme.colors.text.tertiary }]}>
-            {inFlight.length > 0
-              ? `${inFlight.length} transmission${inFlight.length === 1 ? '' : 's'} in transit`
-              : 'All systems nominal'}
+            {contacts.length > 0
+              ? `${contacts.length} galactic contact${contacts.length === 1 ? '' : 's'}`
+              : inFlight.length > 0
+                ? `${inFlight.length} transmission${inFlight.length === 1 ? '' : 's'} in transit`
+                : 'All systems nominal'}
           </Text>
         </Animated.View>
 
         <View style={[styles.topRight, { top: insets.top + spacing.sm }]}>
           <GlowIconButton
             theme={theme}
-            icon="planet"
-            tone={planetAccents.observatory.mid}
-            onPress={() => navigation.navigate('Synthesis')}
-            accessibilityLabel="Open cross-planet synthesis"
+            icon="pulse"
+            tone="#7AF0FF"
+            onPress={() => navigation.navigate('FirstMate')}
+            accessibilityLabel="Talk to First Mate"
           />
           <GlowIconButton
             theme={theme}
@@ -229,7 +236,7 @@ const BridgeScreen = ({ navigation }) => {
         <HoloPanel theme={theme} title="Nav dock" variant="hud" index={2}>
           <View style={styles.dock}>
             {enabledPlanets.map((planet) => {
-              const accent = planetAccents[planet.id];
+              const accent = accentForPlanet(planet);
               const inbound = inFlight.filter((signal) => signal.to === planet.id).length;
               return (
                 <AnimatedPressable
@@ -268,6 +275,14 @@ const BridgeScreen = ({ navigation }) => {
           <View style={styles.consoleActions}>
             <GlowButton
               theme={theme}
+              label="Talk to First Mate"
+              icon="pulse"
+              size="sm"
+              tone="#7AF0FF"
+              onPress={() => navigation.navigate('FirstMate')}
+            />
+            <GlowButton
+              theme={theme}
               label="Synthesize today"
               icon="planet"
               variant="ghost"
@@ -285,11 +300,15 @@ const BridgeScreen = ({ navigation }) => {
             />
           </View>
         </HoloPanel>
+
+        <GalacticSchedule theme={theme} index={2} />
+
+        <ForgePlanetPanel theme={theme} accent={planetAccents.lumen} navigation={navigation} index={3} />
       </ScrollView>
 
       <WarpOverlay
         target={warpTarget}
-        accent={warpTarget ? planetAccents[warpTarget.id].mid : theme.palette.plasma[300]}
+        accent={warpTarget ? accentForPlanet(warpTarget).mid : theme.palette.plasma[300]}
         onComplete={handleWarpComplete}
       />
     </View>

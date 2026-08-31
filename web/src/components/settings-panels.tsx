@@ -47,11 +47,103 @@ function CopyBlock({
   );
 }
 
+export function FirstMatePanel() {
+  const { store, refresh, saving } = useGalaxy();
+  const [twilioNumber, setTwilioNumber] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const phone = store.firstMate?.phone ?? "";
+  const consent = store.firstMate?.smsConsent ?? "none";
+
+  useEffect(() => {
+    void fetch("/api/first-mate")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.twilioNumber) setTwilioNumber(data.twilioNumber);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const consentLabel =
+    consent === "opted_in"
+      ? "Opted in"
+      : consent === "pending"
+        ? "Waiting for YES"
+        : consent === "opted_out"
+          ? "Opted out"
+          : "Not opted in";
+
+  return (
+    <GlassPanel title="First Mate" accent="#7AF0FF" index={0}>
+      <p className="text-sm text-white/55">
+        First Mate is the neural mass at the centre of the galaxy. Click it on the Bridge, talk, or
+        opt in to SMS. Consent is never pre-checked; we wait for YES before health-log replies.
+      </p>
+      {twilioNumber ? (
+        <p className="mt-2 text-xs text-cyan-200/80">Text First Mate at {twilioNumber}</p>
+      ) : (
+        <p className="mt-2 text-xs text-white/40">
+          Set TWILIO_PHONE_NUMBER, TWILIO_ACCOUNT_SID, and TWILIO_AUTH_TOKEN on the web host, then
+          paste the SMS webhook from Agent uplink into Twilio.
+        </p>
+      )}
+      <p className="mt-3 text-[10px] uppercase tracking-widest text-white/40">
+        SMS {consentLabel}
+        {phone ? ` · ${phone}` : ""}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <ShimmerButton tone="#7AF0FF" href="/sms">
+          Open SMS opt-in
+        </ShimmerButton>
+        {phone ? (
+          <ShimmerButton
+            tone="#FF4D6D"
+            variant="ghost"
+            disabled={saving}
+            onClick={async () => {
+              setMsg("");
+              try {
+                const res = await fetch("/api/first-mate", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ phone: null }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Could not unlink");
+                setMsg("Phone unlinked. Reply STOP on that handset if texts are still arriving.");
+                await refresh({ quiet: true });
+              } catch (err) {
+                setMsg(err instanceof Error ? err.message : "Could not unlink");
+              }
+            }}
+          >
+            Unlink phone
+          </ShimmerButton>
+        ) : null}
+      </div>
+      <p className="mt-3 text-xs text-white/40">
+        <a href="/privacy" className="text-cyan-200/80 hover:underline">
+          Privacy
+        </a>
+        {" · "}
+        <a href="/terms" className="text-cyan-200/80 hover:underline">
+          Terms
+        </a>
+        {" · "}
+        <a href="/sms/flow" className="text-cyan-200/80 hover:underline">
+          Message flow
+        </a>
+      </p>
+      {msg ? <p className="mt-3 text-sm text-white/60">{msg}</p> : null}
+    </GlassPanel>
+  );
+}
+
 export function AgentAccessPanel() {
   const { store, refresh } = useGalaxy();
   const [token, setToken] = useState<string | null>(null);
   const [agentPrompt, setAgentPrompt] = useState("");
   const [exampleGet, setExampleGet] = useState("");
+  const [firstMateSmsUrl, setFirstMateSmsUrl] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -65,6 +157,7 @@ export function AgentAccessPanel() {
       setToken(data.token);
       setAgentPrompt(data.agentPrompt || "");
       setExampleGet(data.examples?.get || "");
+      setFirstMateSmsUrl(data.firstMateSmsUrl || "");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -112,6 +205,7 @@ export function AgentAccessPanel() {
                 setToken(null);
                 setAgentPrompt("");
                 setExampleGet("");
+                setFirstMateSmsUrl("");
                 await refresh();
               } finally {
                 setBusy(false);
@@ -129,6 +223,13 @@ export function AgentAccessPanel() {
         <div className="mt-5 space-y-4">
           <CopyBlock label="Paste this to your agent" value={agentPrompt} />
           <CopyBlock label="Token only (keep secret)" value={token} accent="#FF8A3D" />
+          {firstMateSmsUrl ? (
+            <CopyBlock
+              label="Twilio SMS webhook (First Mate)"
+              value={firstMateSmsUrl}
+              accent="#7AF0FF"
+            />
+          ) : null}
           {exampleGet ? (
             <CopyBlock label="One-shot example URL" value={exampleGet} accent="#4CE0FF" />
           ) : null}
